@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en-CA">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TrueNorth · Hackathon Strategy Brief</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --noir:#000000; --panel:#0A0907; --card:#141310; --elevated:#1E1C18;
+    --bone:#ECE6D5; --bone-2:#D6CFBB; --caption:#A89F88; --muted:#6F6957;
+    --gold:#AA9068; --gold-dim:#8A7656; --rule:#5C4E35; --rule-soft:#241F18;
+    --pass:#5BD68A; --alert:#D9544D;
+    --sans:'Manrope',system-ui,sans-serif;
+    --serif:'Cormorant Garamond',Georgia,serif;
+    --disp:'Cormorant Garamond',Georgia,serif;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:var(--noir);color:var(--bone);font-family:var(--sans);
+    font-weight:400;-webkit-font-smoothing:antialiased;line-height:1.6;
+    font-feature-settings:"tnum";
+  }
+  ::selection{background:var(--gold);color:var(--noir)}
+  .sheet{max-width:1060px;margin:0 auto;padding:0 clamp(22px,4vw,62px)}
+
+  /* ---------- icons ---------- */
+  .ico{fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .ico-sm{width:18px;height:18px}
+  .ico-md{width:25px;height:25px}
+  .ico-lg{width:30px;height:30px}
+
+  /* ---------- masthead ---------- */
+  .top{padding:clamp(44px,7vw,86px) 0 0}
+  .mark{display:flex;align-items:center;gap:13px;margin-bottom:28px}
+  .mark .dot{width:11px;height:11px;background:var(--gold);transform:rotate(45deg);flex:none}
+  .mark .mt{font-family:var(--mono);font-size:12.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--caption)}
+  h1{
+    font-family:var(--serif);font-weight:600;
+    font-size:clamp(44px,6.6vw,76px);line-height:1.07;letter-spacing:-.01em;color:var(--bone);
+  }
+  h1 .g{color:var(--gold)}
+  .deck-lead{
+    font-size:clamp(17px,1.95vw,22px);color:var(--bone-2);line-height:1.66;
+    margin-top:22px;max-width:50ch;font-weight:300;
+  }
+  .deck-lead b{color:var(--bone);font-weight:500}
+
+  /* pure-software banner */
+  .sw-banner{
+    display:flex;gap:18px;align-items:flex-start;
+    margin-top:30px;padding:20px 24px;
+    background:var(--elevated);border:1px solid var(--gold-dim);
+  }
+  .sw-banner .sw-ico{color:var(--gold);flex:none;margin-top:2px}
+  .sw-banner .sw-tx{font-size:clamp(14px,1.5vw,16.5px);line-height:1.66;color:var(--bone-2)}
+  .sw-banner .sw-tx b{color:var(--bone);font-weight:700}
+  .sw-banner .sw-tx .hl{color:var(--gold);font-weight:500}
+
+  /* fact strip */
+  .facts{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+    background:var(--rule-soft);border:1px solid var(--rule-soft);margin-top:24px;
+  }
+  .fact{background:var(--noir);padding:16px 18px}
+  .fact .fl{font-family:var(--mono);font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--gold);margin-bottom:7px}
+  .fact .fv{font-size:16px;color:var(--bone);font-weight:500;line-height:1.4}
+
+  /* legend */
+  .legend{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+  .lg{display:flex;flex-direction:column;gap:7px;padding:13px 15px;border:1px solid var(--rule-soft);background:var(--panel)}
+  .lg-k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;align-self:flex-start;padding:3px 9px;text-transform:uppercase}
+  .lg-k.fact{background:var(--bone);color:var(--noir)}
+  .lg-k.sugg{background:var(--gold);color:var(--noir)}
+  .lg-k.exmp{border:1px dashed var(--caption);color:var(--caption)}
+  .lg-v{font-size:13px;color:var(--bone-2);line-height:1.5}
+
+  /* ---------- band + section head ---------- */
+  .band{padding:clamp(44px,5.6vw,68px) 0;border-top:1px solid var(--rule)}
+  .band-head{display:flex;gap:clamp(16px,2vw,24px);align-items:center;margin-bottom:clamp(24px,3vw,36px)}
+  .bnum{
+    font-family:var(--disp);font-weight:600;font-size:clamp(46px,6vw,74px);
+    line-height:.8;color:var(--gold);flex:none;
+  }
+  .bh-ico{color:var(--gold);flex:none}
+  .bh-text{display:flex;flex-direction:column;gap:8px}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--caption)}
+  h2{font-family:var(--serif);font-weight:600;font-size:clamp(28px,3.9vw,46px);line-height:1.16;color:var(--bone);letter-spacing:-.005em}
+  h2 .g{color:var(--gold)}
+
+  p{font-size:clamp(15px,1.6vw,18px);color:var(--bone-2);line-height:1.66}
+  p b,strong{color:var(--bone);font-weight:700}
+  .gold{color:var(--gold)}
+  .lead{font-size:clamp(16px,1.75vw,20px);color:var(--bone-2);line-height:1.6}
+
+  /* 5-dimension bar */
+  .dims{display:flex;gap:4px;margin-top:6px}
+  .dim{flex:1;padding:15px 8px;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center}
+  .dim.tech{background:var(--card);border:1px solid var(--rule-soft)}
+  .dim.soft{background:rgba(170,144,104,.15);border:1px solid var(--gold-dim)}
+  .dim .dk{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase}
+  .dim.tech .dk{color:var(--muted)}
+  .dim.soft .dk{color:var(--gold)}
+  .dim .dn{font-size:clamp(12px,1.3vw,15px);color:var(--bone);font-weight:600;line-height:1.25}
+  .dims-cap{margin-top:14px;font-size:clamp(13.5px,1.45vw,16px);color:var(--caption);line-height:1.55}
+  .dims-cap b{color:var(--gold);font-weight:700}
+
+  /* move cards */
+  .moves{display:grid;grid-template-columns:1fr 1fr;gap:clamp(16px,2vw,24px);margin-top:26px}
+  .move{
+    background:var(--card);border:1px solid var(--rule);padding:clamp(22px,2.4vw,30px);
+    display:flex;flex-direction:column;gap:13px;
+  }
+  .move .m-top{display:flex;align-items:center;gap:13px}
+  .move .m-no{font-family:var(--disp);font-size:42px;line-height:.9;color:var(--gold);font-weight:600}
+  .move .m-ico{color:var(--gold);flex:none}
+  .move h3{font-family:var(--serif);font-weight:600;font-size:clamp(20px,2.3vw,27px);color:var(--bone);line-height:1.2}
+  .move p{font-size:clamp(14px,1.5vw,16px);line-height:1.6}
+
+  .callout{
+    border-left:3px solid var(--gold);padding:15px 0 15px 20px;margin-top:24px;
+    font-size:clamp(16px,1.75vw,20px);color:var(--bone-2);line-height:1.5;
+    font-family:var(--serif);font-style:italic;
+  }
+  .callout b{color:var(--bone);font-weight:600;font-style:normal}
+
+  /* room cards */
+  .trio{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(14px,1.8vw,22px);margin-top:8px}
+  .rcard{background:var(--panel);border:1px solid var(--rule-soft);padding:clamp(18px,2vw,26px);display:flex;flex-direction:column;gap:12px;height:100%}
+  .rcard .r-ico{
+    width:48px;height:48px;border:1px solid var(--gold-dim);color:var(--gold);
+    display:flex;align-items:center;justify-content:center;flex:none;
+  }
+  .rcard h3{font-family:var(--serif);font-weight:600;font-size:clamp(19px,2.1vw,24px);color:var(--bone);line-height:1.15}
+  .rcard p{font-size:clamp(13.5px,1.45vw,15.5px);line-height:1.55}
+  .rcard .rfoot{margin-top:auto;padding-top:12px;border-top:1px solid var(--rule-soft);font-family:var(--mono);font-size:11px;letter-spacing:.05em;color:var(--caption);text-transform:uppercase}
+
+  /* architecture strip */
+  .arch{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
+  .arch-item{display:flex;gap:13px;align-items:flex-start;padding:16px 18px;border:1px solid var(--rule-soft);background:var(--card)}
+  .arch-item .a-mk{font-family:var(--mono);font-size:18px;flex:none;line-height:1.2}
+  .arch-item.yes .a-mk{color:var(--pass)}
+  .arch-item.no .a-mk{color:var(--alert)}
+  .arch-item .a-tx{font-size:clamp(13px,1.4vw,15px);line-height:1.55;color:var(--bone-2)}
+  .arch-item .a-tx b{color:var(--bone)}
+
+  /* pre-build vs game-day split */
+  .split2{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rule-soft);border:1px solid var(--rule-soft);margin-top:8px}
+  .split-col{background:var(--noir);padding:clamp(17px,2vw,26px);display:flex;flex-direction:column;gap:11px}
+  .split-col.day{background:var(--card)}
+  .split-k{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+  .split-col p{font-size:clamp(13.5px,1.4vw,15.5px);line-height:1.66;color:var(--bone-2)}
+  .split-col p b{color:var(--bone);font-weight:700}
+
+  /* example warning */
+  .warn{
+    display:flex;gap:14px;align-items:flex-start;margin:2px 0 24px;
+    padding:15px 18px;background:#1a1210;border:1px solid var(--alert);
+  }
+  .warn .w-ico{color:var(--alert);flex:none;margin-top:1px}
+  .warn .w-tx{font-size:clamp(13.5px,1.5vw,16px);line-height:1.6;color:var(--bone-2)}
+  .warn .w-tx b{color:var(--bone);font-weight:700}
+
+  /* supply chain flow */
+  .flow{display:flex;align-items:stretch;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+  .tier{display:flex;flex-direction:column;gap:9px;flex:1;min-width:210px}
+  .tlabel{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+  .node{
+    border:1px solid var(--rule);background:var(--card);padding:11px 13px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .node .n-ico{color:var(--caption);flex:none}
+  .node .n-body{flex:1;min-width:0}
+  .node .n-name{font-size:14.5px;color:var(--bone);font-weight:600;line-height:1.2}
+  .node .n-meta{font-family:var(--mono);font-size:10px;color:var(--caption);letter-spacing:.02em;margin-top:3px}
+  .node.ca{border-color:var(--gold-dim)}
+  .node.ca .n-ico{color:var(--pass)} .node.ca .n-meta{color:var(--pass)}
+  .node.imp{border-color:var(--alert);background:#1a1210}
+  .node.imp .n-ico,.node.imp .n-meta{color:var(--alert)}
+  .node.mix{border-color:var(--gold)}
+  .node.mix .n-ico,.node.mix .n-meta{color:var(--gold)}
+  .flow .arrow{display:flex;align-items:center;color:var(--gold);flex:none;font-size:22px}
+  .drone-node{
+    border:2px solid var(--gold);background:var(--elevated);
+    padding:16px 15px;flex:1;display:flex;flex-direction:column;gap:5px;justify-content:center;
+  }
+  .drone-node .d-name{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--bone)}
+  .drone-node .d-pct{font-family:var(--disp);font-weight:600;font-size:48px;line-height:1;color:var(--gold)}
+  .drone-node .d-sub{font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--caption);text-transform:uppercase}
+
+  /* threshold gauge */
+  .gauge-wrap{margin-top:30px;border:1px solid var(--rule-soft);background:var(--panel);padding:clamp(24px,3vw,40px) clamp(22px,3vw,44px) clamp(20px,2.6vw,32px)}
+  .gauge-title{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--caption);margin-bottom:46px;text-align:center}
+  .gauge{position:relative}
+  .gauge-bar{display:flex;height:54px;border:1px solid var(--rule)}
+  .gz{display:flex;align-items:center;justify-content:center;font-size:clamp(11px,1.3vw,14px);font-weight:600;position:relative;letter-spacing:.02em}
+  .gz-fail{flex-grow:51;background:var(--card);color:var(--muted);border-right:1px solid var(--rule)}
+  .gz-mic{flex-grow:47;background:rgba(170,144,104,.16);color:var(--bone);border-right:1px solid var(--gold)}
+  .gz-poc{flex-grow:2;background:var(--gold);min-width:8px}
+  .gauge-pin{position:absolute;top:-44px;left:81%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;z-index:3}
+  .pin-flag{background:var(--bone);color:var(--noir);font-family:var(--disp);font-weight:600;font-size:28px;line-height:1;padding:7px 14px 5px}
+  .pin-sub{font-family:var(--mono);font-size:8.5px;letter-spacing:.06em;color:var(--noir);background:var(--bone);padding:0 0 5px;text-transform:uppercase}
+  .pin-stem{width:2px;height:18px;background:var(--bone)}
+  .gauge-axis{position:relative;height:44px;margin-top:9px}
+  .tick{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px}
+  .tick .tk-n{font-family:var(--mono);font-size:13px;color:var(--bone);font-weight:500}
+  .tick .tk-l{font-family:var(--mono);font-size:9px;letter-spacing:.04em;color:var(--caption);text-transform:uppercase;white-space:nowrap}
+  .tick.edge .tk-n{color:var(--muted);font-size:11px}
+  .gauge-cap{margin-top:24px;display:flex;gap:14px;flex-wrap:wrap}
+  .gcap{flex:1;min-width:240px;display:flex;gap:11px;align-items:flex-start;font-size:clamp(13px,1.4vw,15px);line-height:1.5;color:var(--bone-2)}
+  .gcap .gc-mk{font-family:var(--mono);font-size:15px;flex:none;line-height:1.2}
+  .gcap.yes .gc-mk{color:var(--pass)} .gcap.no .gc-mk{color:var(--alert)}
+  .gcap b{color:var(--bone)}
+  .gauge-law{margin-top:18px;font-size:clamp(12.5px,1.35vw,14.5px);color:var(--caption);line-height:1.55;text-align:center}
+  .gauge-law b{color:var(--gold);font-weight:600}
+
+  /* attacks */
+  .attacks{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-top:28px}
+  .atk{border:1px solid var(--rule-soft);background:var(--card);display:flex;flex-direction:column}
+  .atk .a-head{display:flex;align-items:center;gap:10px;padding:15px 16px 13px;border-bottom:1px solid var(--rule-soft)}
+  .atk .a-ico{color:var(--alert);flex:none}
+  .atk .a-name{font-family:var(--serif);font-weight:600;font-size:21px;color:var(--bone)}
+  .atk .a-num{font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:auto}
+  .atk .a-do{padding:14px 16px;font-size:clamp(12.5px,1.35vw,14.5px);color:var(--bone-2);line-height:1.55;flex:1}
+  .atk .a-rej{margin:0 16px 15px;display:flex;gap:9px;align-items:flex-start;padding:11px 13px;background:#1a1210;border-left:2px solid var(--alert)}
+  .atk .a-rej .rx{color:var(--alert);flex:none}
+  .atk .a-rej .rt{font-family:var(--mono);font-size:10.5px;line-height:1.5;color:var(--alert);letter-spacing:.02em}
+  .atk-foot{margin-top:20px;display:flex;gap:13px;align-items:flex-start;font-size:clamp(15px,1.65vw,18px);color:var(--bone-2);line-height:1.55}
+  .atk-foot .af-ico{color:var(--pass);flex:none;margin-top:2px}
+  .atk-foot b{color:var(--gold)}
+
+  /* roles */
+  .note-strip{
+    display:flex;gap:13px;align-items:flex-start;margin-bottom:24px;
+    padding:15px 18px;background:var(--elevated);border:1px solid var(--rule-soft);
+  }
+  .note-strip .ns-ico{color:var(--gold);flex:none;margin-top:1px}
+  .note-strip .ns-tx{font-size:clamp(13.5px,1.5vw,16px);line-height:1.6;color:var(--bone-2)}
+  .note-strip .ns-tx b{color:var(--bone);font-weight:700}
+  .roles{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(14px,1.8vw,22px)}
+  .role{border-top:3px solid var(--gold);padding-top:17px;display:flex;flex-direction:column;gap:9px}
+  .role .r-who{font-family:var(--mono);font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--gold)}
+  .role h3{font-family:var(--serif);font-weight:600;font-size:clamp(19px,2.1vw,23px);color:var(--bone);line-height:1.15}
+  .role p{font-size:clamp(13px,1.4vw,15px);line-height:1.6}
+
+  /* timeline track */
+  .track{position:relative;margin-top:34px}
+  .track-line{position:absolute;top:7px;left:6%;right:6%;height:1px;background:var(--rule)}
+  .milestones{display:flex}
+  .ms{flex:1;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:0 6px}
+  .ms-dot{width:14px;height:14px;border:1px solid var(--gold);background:var(--noir);transform:rotate(45deg);position:relative;z-index:2}
+  .ms.peak .ms-dot{background:var(--gold)}
+  .ms-date{font-family:var(--mono);font-size:12px;color:var(--gold);font-weight:500}
+  .ms.peak .ms-date{color:var(--bone)}
+  .ms-x{font-size:12.5px;color:var(--caption);line-height:1.45}
+
+  /* decisions */
+  .decs{display:grid;grid-template-columns:1fr 1fr;gap:11px 28px;margin-top:6px}
+  .dec{display:flex;gap:15px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--rule-soft)}
+  .dec .d-no{font-family:var(--disp);font-size:32px;line-height:.85;color:var(--gold);font-weight:600;flex:none;width:34px;text-align:center}
+  .dec .d-tx{font-size:clamp(14px,1.5vw,16px);color:var(--bone-2);line-height:1.5}
+  .dec .d-tx b{color:var(--bone);font-weight:700;display:block;margin-bottom:2px}
+
+  /* closing */
+  .closing{margin-top:34px;border-top:1px solid var(--rule);padding-top:34px}
+  .closing .c-big{font-family:var(--serif);font-weight:600;font-size:clamp(28px,4.1vw,46px);color:var(--bone);line-height:1.18}
+  .closing .c-big .g{color:var(--gold)}
+  .closing .c-meta{margin-top:18px;display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+  .closing .c-meta .dot{width:9px;height:9px;background:var(--gold);transform:rotate(45deg);flex:none}
+
+  .foot{padding:26px 0 66px;text-align:center}
+  .foot span{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--rule);text-transform:uppercase}
+
+  @media (max-width:760px){
+    .facts,.legend,.moves,.trio,.arch,.attacks,.roles,.decs,.gauge-cap{grid-template-columns:1fr}
+    .flow{flex-direction:column;align-items:stretch}
+    .flow .arrow{transform:rotate(90deg);justify-content:center;padding:3px 0}
+    .milestones{flex-direction:column;gap:18px}
+    .track-line{display:none}
+    .ms{flex-direction:row;text-align:left;gap:14px}
+    .band-head{gap:14px}
+  }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-soft" viewBox="0 0 24 24"><polyline points="9 8 4 12 9 16"/><polyline points="15 8 20 12 15 16"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.4"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><rect x="2.6" y="9" width="11" height="6" rx="3"/><rect x="10.4" y="9" width="11" height="6" rx="3"/></symbol>
+  <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 3 L20 7.4 V16.6 L12 21 L4 16.6 V7.4 Z"/><path d="M4 7.4 L12 11.9 L20 7.4"/><line x1="12" y1="11.9" x2="12" y2="21"/></symbol>
+  <symbol id="i-team" viewBox="0 0 24 24"><circle cx="7" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><circle cx="12" cy="16" r="3"/></symbol>
+  <symbol id="i-docchk" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18"/><polyline points="8.6 12 11 14.4 15.4 9"/></symbol>
+  <symbol id="i-stamp" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18"/><line x1="8.6" y1="8" x2="15.4" y2="8"/><line x1="8.6" y1="11.4" x2="15.4" y2="11.4"/><path d="M8.6 16 q1.8 -2.4 3.4 0 t3.4 0"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.4"/><line x1="15.6" y1="15.6" x2="20.4" y2="20.4"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2.6 L19.6 5.6 V11 C19.6 15.8 16.3 19.3 12 21.4 C7.7 19.3 4.4 15.8 4.4 11 V5.6 Z"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.6 L21.4 19.8 H2.6 Z"/><line x1="12" y1="10" x2="12" y2="14.4"/><line x1="12" y1="17" x2="12" y2="17.2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><polyline points="4 12.6 9.4 18 20 6.4"/></symbol>
+  <symbol id="i-cross" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></symbol>
+</defs></svg>
+
+<div class="sheet">
+
+  <!-- MASTHEAD -->
+  <header class="top">
+    <div class="mark">
+      <span class="dot"></span>
+      <span class="mt">RedTeam DefTech Hackathon · Ottawa · Strategy Brief</span>
+    </div>
+    <h1>The contest, and <span class="g">how we win it</span> — one page</h1>
+    <p class="deck-lead">Buy Canadian is now policy — but no one can verify whether a product is <b>genuinely Canadian-made</b>. We build the missing verification layer: cryptographic provenance for supply chains, with drones as the use case. Working name: <b>TrueNorth</b>.</p>
+
+    <div class="sw-banner">
+      <svg class="ico ico-lg sw-ico"><use href="#i-soft"/></svg>
+      <div class="sw-tx"><b>This is a pure-software project.</b> What we build = a web app + a bit of cryptographic code + a data file. <span class="hl">No hardware at any point</span> — no real drone, no real sensors, no real parts. The "drone" in the brief is just a <span class="hl">use-case setting</span> in the data — like building a hospital-scheduling system without opening a hospital.</div>
+    </div>
+
+    <div class="facts">
+      <div class="fact"><div class="fl">Event day</div><div class="fv">Sat 30 May 2026</div></div>
+      <div class="fact"><div class="fl">Venue</div><div class="fv">Bayview Yards – The Foundry</div></div>
+      <div class="fact"><div class="fl">Team</div><div class="fv">Sikai · KC · Zhengshen</div></div>
+      <div class="fact"><div class="fl">Prize pool</div><div class="fv">$20,000 CAD</div></div>
+      <div class="fact"><div class="fl">Day flow</div><div class="fv">9:15 kickoff → 16:30 finals</div></div>
+      <div class="fact"><div class="fl">Status</div><div class="fv">✅ Accepted · 100+ applied</div></div>
+    </div>
+
+    <div class="legend">
+      <div class="lg"><span class="lg-k fact">Fact</span><span class="lg-v">Event info, judging criteria, legal thresholds — all verified</span></div>
+      <div class="lg"><span class="lg-k sugg">Proposal</span><span class="lg-v">Product, tech, roles, process — to be locked at today's meeting</span></div>
+      <div class="lg"><span class="lg-k exmp">Example</span><span class="lg-v">The drone &amp; numbers in the demo section — illustrative, not real</span></div>
+    </div>
+  </header>
+
+  <!-- 01 -->
+  <section class="band">
+    <div class="band-head">
+      <span class="bnum">01</span>
+      <svg class="ico ico-lg bh-ico"><use href="#i-target"/></svg>
+      <div class="bh-text"><div class="kicker">How we win · Strategy proposal</div><h2>This is <span class="g">not a coding contest</span></h2></div>
+    </div>
+    <div class="dims">
+      <div class="dim soft"><span class="dk">Non-technical</span><span class="dn">Entrepreneurial Drive</span></div>
+      <div class="dim tech"><span class="dk">Technical</span><span class="dn">Algorithm</span></div>
+      <div class="dim tech"><span class="dk">Technical</span><span class="dn">Technical Implementation</span></div>
+      <div class="dim soft"><span class="dk">Non-technical</span><span class="dn">Feasibility &amp; Scalability</span></div>
+      <div class="dim soft"><span class="dk">Non-technical</span><span class="dn">Storytelling &amp; Vision</span></div>
+    </div>
+    <p class="dims-cap">The five official judging criteria — <b>the three in gold are not technical</b>: they reward business framing, feasibility and delivery. There is also a standalone $1,000 Best Presenter prize. Three people against teams of up to five — we cannot win on feature count, only on focus.</p>
+    <div class="moves">
+      <div class="move">
+        <div class="m-top"><span class="m-no">1</span><svg class="ico ico-md m-ico"><use href="#i-alert"/></svg></div>
+        <h3>Catch a forger, live, in the demo</h3>
+        <p>The event is literally called <span class="gold">Red Team</span>, and the brief names tampering / forgery / replay. Most teams only demo honest data — we show all three attacks getting rejected, on stage.</p>
+      </div>
+      <div class="move">
+        <div class="m-top"><span class="m-no">2</span><svg class="ico ico-md m-ico"><use href="#i-target"/></svg></div>
+        <h3>Build an actual product</h3>
+        <p>The other ~9 teams will likely demo a grey admin panel. We demo a <span class="gold">product</span> — a name, a logo, a provenance graph that is genuinely legible. Judges who have sat through grey tables all day give us a halo.</p>
+      </div>
+    </div>
+    <div class="callout"><b>The strategy in one line:</b> build the chain, catch the forger, and look like we could ship to the Canadian Armed Forces tomorrow.</div>
+  </section>
+
+  <!-- 02 -->
+  <section class="band">
+    <div class="band-head">
+      <span class="bnum">02</span>
+      <svg class="ico ico-lg bh-ico"><use href="#i-link"/></svg>
+      <div class="bh-text"><div class="kicker">What we build · Proposal</div><h2>One platform, <span class="g">three rooms</span></h2></div>
+    </div>
+    <p class="lead"><b>Proposed:</b> a supply-chain provenance verification platform — one dataset, three viewpoints. The brief's four required deliverables map cleanly onto these three rooms; nothing built that the brief did not ask for.</p>
+    <div class="trio">
+      <div class="rcard">
+        <div class="r-ico"><svg class="ico ico-md"><use href="#i-stamp"/></svg></div>
+        <h3>Supplier room</h3>
+        <p>A verified supplier issues a cryptographic attestation for their contribution — materials, labour, location, cost.</p>
+        <div class="rfoot">Deliverable A</div>
+      </div>
+      <div class="rcard">
+        <div class="r-ico"><svg class="ico ico-md"><use href="#i-search"/></svg></div>
+        <h3>Purchaser room · the focus</h3>
+        <p>Enter a drone → see the provenance graph, the Canadian-content %, and the verdict. Read a product's whole history at a glance.</p>
+        <div class="rfoot">Deliverable B + C</div>
+      </div>
+      <div class="rcard">
+        <div class="r-ico"><svg class="ico ico-md"><use href="#i-shield"/></svg></div>
+        <h3>Auditor / Red-team room</h3>
+        <p>Inspect the cryptographic trust chain node by node; if anyone forges, it flags red.</p>
+        <div class="rfoot">Deliverable D</div>
+      </div>
+    </div>
+    <div class="arch">
+      <div class="arch-item yes"><span class="a-mk">✓</span><span class="a-tx"><b>Right-sized, not flashy</b> — a hash-linked DAG: change any node and its hash changes, breaking the chain = tamper-evident. A mature, unremarkable technique — but correct, light, buildable in a day.</span></div>
+      <div class="arch-item no"><span class="a-mk">✗</span><span class="a-tx"><b>Deliberately no blockchain</b> — a hash chain is enough for tamper-evidence; consensus solves a problem we do not have. Knowing not to reach for it reads as more senior, not less.</span></div>
+    </div>
+  </section>
+
+  <!-- 03 -->
+  <section class="band">
+    <div class="band-head">
+      <span class="bnum">03</span>
+      <svg class="ico ico-lg bh-ico"><use href="#i-cube"/></svg>
+      <div class="bh-text"><div class="kicker">The demo · Illustrative example</div><h2>A drone that lands <span class="g">right on the threshold</span></h2></div>
+    </div>
+    <p class="lead"><b>Why compute a "Canadian percentage" for a drone</b> — the Canadian Armed Forces want genuinely Canadian-made drones, but a drone has dozens of parts from many countries; a maker writing "Made in Canada" on the label is only self-reporting, and can fake it. This system gives the buyer an <b>independently verifiable</b> answer: how Canadian is this drone, really — and does it qualify.</p>
+    <div class="warn">
+      <svg class="ico ico-md w-ico"><use href="#i-alert"/></svg>
+      <div class="w-tx"><b>The drone below and every number are an illustrative example</b> — sample data made up to show how the system works. The real challenge data only arrives 72h before the event. It is still just data, never a physical object.</div>
+    </div>
+
+    <div class="flow">
+      <div class="tier">
+        <div class="tlabel">Tier 2 · raw &amp; parts</div>
+        <div class="node ca"><svg class="ico ico-sm n-ico"><use href="#i-check"/></svg><div class="n-body"><div class="n-name">Aluminum stock</div><div class="n-meta">Ontario · 100% CA</div></div></div>
+        <div class="node imp"><svg class="ico ico-sm n-ico"><use href="#i-alert"/></svg><div class="n-body"><div class="n-name">IMU / flight sensor</div><div class="n-meta">Imported · 0% CA</div></div></div>
+        <div class="node ca"><svg class="ico ico-sm n-ico"><use href="#i-check"/></svg><div class="n-body"><div class="n-name">Li-ion cells</div><div class="n-meta">Québec · 100% CA</div></div></div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="tier">
+        <div class="tlabel">Tier 1 · subassemblies</div>
+        <div class="node ca"><svg class="ico ico-sm n-ico"><use href="#i-cube"/></svg><div class="n-body"><div class="n-name">Airframe</div><div class="n-meta">100% CA</div></div></div>
+        <div class="node mix"><svg class="ico ico-sm n-ico"><use href="#i-cube"/></svg><div class="n-body"><div class="n-name">Flight controller</div><div class="n-meta">43% CA (mixed)</div></div></div>
+        <div class="node ca"><svg class="ico ico-sm n-ico"><use href="#i-cube"/></svg><div class="n-body"><div class="n-name">Battery pack</div><div class="n-meta">100% CA</div></div></div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="tier">
+        <div class="tlabel">Tier 0 · finished</div>
+        <div class="drone-node">
+          <span class="d-name">Surveillance drone</span>
+          <span class="d-pct">81%</span>
+          <span class="d-sub">Canadian content</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="lead"><b>How the 81% is computed</b> — each supplier signs two numbers: what their stage cost, and how much of that was spent in Canada (Canadian materials + Canadian labour). The system rolls the whole chain up → Canadian cost ÷ total cost. This example = $560 ÷ $690 = 81%. Every number carries a cryptographic signature — no one can alter it, and anyone can re-add it to check.</p>
+
+    <div class="gauge-wrap">
+      <div class="gauge-title">Canadian content · caught between two legal thresholds</div>
+      <div class="gauge">
+        <div class="gauge-pin">
+          <span class="pin-flag">81%</span>
+          <span class="pin-sub">example drone</span>
+          <span class="pin-stem"></span>
+        </div>
+        <div class="gauge-bar">
+          <div class="gz gz-fail">Does not qualify</div>
+          <div class="gz gz-mic">Made in Canada ✓</div>
+          <div class="gz gz-poc"></div>
+        </div>
+        <div class="gauge-axis">
+          <div class="tick edge" style="left:0%"><span class="tk-n">0</span></div>
+          <div class="tick" style="left:51%"><span class="tk-n">51%</span><span class="tk-l">Made in Canada line</span></div>
+          <div class="tick" style="left:98%"><span class="tk-n">98%</span><span class="tk-l">Product of Canada line</span></div>
+          <div class="tick edge" style="left:100%"><span class="tk-n">100</span></div>
+        </div>
+      </div>
+      <div class="gauge-cap">
+        <div class="gcap yes"><span class="gc-mk">✓</span><span><b>Made in Canada — yes.</b> 81% ≥ 51%, and final assembly is in Canada.</span></div>
+        <div class="gcap no"><span class="gc-mk">✗</span><span><b>Product of Canada — no.</b> 81% &lt; 98%, held down by that one imported chip.</span></div>
+      </div>
+      <div class="gauge-law">The thresholds are <b>real Canadian law</b>: ≥51% of direct costs + final assembly in Canada = Made in Canada; ≥98% = Product of Canada.</div>
+    </div>
+
+    <div class="attacks">
+      <div class="atk">
+        <div class="a-head"><svg class="ico ico-sm a-ico"><use href="#i-alert"/></svg><span class="a-name">Tamper</span><span class="a-num">01</span></div>
+        <div class="a-do">Secretly change the imported chip's cost from $130 to $13.</div>
+        <div class="a-rej"><svg class="ico ico-sm rx"><use href="#i-cross"/></svg><span class="rt">HASH MISMATCH — content no longer matches its signature</span></div>
+      </div>
+      <div class="atk">
+        <div class="a-head"><svg class="ico ico-sm a-ico"><use href="#i-alert"/></svg><span class="a-name">Forge</span><span class="a-num">02</span></div>
+        <div class="a-do">Inject a fake attestation signed with an unregistered key.</div>
+        <div class="a-rej"><svg class="ico ico-sm rx"><use href="#i-cross"/></svg><span class="rt">UNKNOWN ISSUER — signature does not chain to a verified identity</span></div>
+      </div>
+      <div class="atk">
+        <div class="a-head"><svg class="ico ico-sm a-ico"><use href="#i-alert"/></svg><span class="a-name">Replay</span><span class="a-num">03</span></div>
+        <div class="a-do">Paste another drone's genuine attestation onto this one.</div>
+        <div class="a-rej"><svg class="ico ico-sm rx"><use href="#i-cross"/></svg><span class="rt">REPLAY DETECTED — nonce / product binding mismatch</span></div>
+      </div>
+    </div>
+    <div class="atk-foot">
+      <svg class="ico ico-md af-ico"><use href="#i-shield"/></svg>
+      <span>Three attacks, three rejections, and <b>the percentage never moves</b> — because it is computed only from verified data. This is the highest-scoring 45 seconds of the whole demo.</span>
+    </div>
+  </section>
+
+  <!-- 04 -->
+  <section class="band">
+    <div class="band-head">
+      <span class="bnum">04</span>
+      <svg class="ico ico-lg bh-ico"><use href="#i-team"/></svg>
+      <div class="bh-text"><div class="kicker">Roles &amp; rhythm · Proposal</div><h2>Three people, <span class="g">three lanes</span></h2></div>
+    </div>
+    <div class="note-strip">
+      <svg class="ico ico-md ns-ico"><use href="#i-alert"/></svg>
+      <div class="ns-tx"><b>The three work-lanes below are a proposed split, to be claimed together at today's meeting — nothing assigned yet.</b> Rationale: two of the three have a backend background, well-suited to jointly tackling the cryptography and data core; the frontend stays with one person to avoid fragmentation.</div>
+    </div>
+    <div class="roles">
+      <div class="role">
+        <div class="r-who">Lane 1</div>
+        <h3>Frontend · product UI · demo</h3>
+        <p>UI design (Figma) + React frontend + visual identity (name / logo) + running the demo.</p>
+      </div>
+      <div class="role">
+        <div class="r-who">Lane 2</div>
+        <h3>Cryptography &amp; verification engine</h3>
+        <p>Keys &amp; identity registry + signing + verification + catching tamper / forgery / replay + readable alerts.</p>
+      </div>
+      <div class="role">
+        <div class="r-who">Lane 3</div>
+        <h3>Data · provenance graph · algorithm</h3>
+        <p>JSON data model + attestation DAG + recursive Canadian-content algorithm + mock data.</p>
+      </div>
+    </div>
+    <div class="track">
+      <div class="track-line"></div>
+      <div class="milestones">
+        <div class="ms"><div class="ms-dot"></div><div class="ms-date">21 May · today</div><div class="ms-x">Team meeting · lock the 6 decisions</div></div>
+        <div class="ms"><div class="ms-dot"></div><div class="ms-date">21 – 27 May</div><div class="ms-x">Pre-build separately: UI / engine / data</div></div>
+        <div class="ms"><div class="ms-dot"></div><div class="ms-date">~27 May</div><div class="ms-x">Technical spec released · adjust</div></div>
+        <div class="ms"><div class="ms-dot"></div><div class="ms-date">27 – 29 May</div><div class="ms-x">Build frontend + integrate</div></div>
+        <div class="ms peak"><div class="ms-dot"></div><div class="ms-date">30 May · event</div><div class="ms-x">Integrate · stage attacks · rehearse ×3</div></div>
+      </div>
+    </div>
+    <p class="lead" style="margin-top:8px"><b>Pre-build vs game day</b> — the organizers release the technical spec on 5/27 and explicitly allow pre-building; but the specific challenge is only revealed at 9:15 on the day. Two distinct jobs:</p>
+    <div class="split2">
+      <div class="split-col">
+        <div class="split-k">Pre-built · ~60–70%</div>
+        <p>The whole <b>generic system</b>, running on our own mock data — frontend UI · crypto engine · data model + the % algorithm · mock data · pitch. We can start once the spec drops on 5/27.</p>
+      </div>
+      <div class="split-col day">
+        <div class="split-k">On the day · ≈5 hrs · 9:15 → 16:30</div>
+        <p>Absorb the 9:15 briefing · <b>swap in the real data</b> · handle any curveball · the three parts integrated for the first time · demo against the real scenario + rehearse ×3.</p>
+      </div>
+    </div>
+    <div class="warn" style="margin-top:14px">
+      <svg class="ico ico-md w-ico"><use href="#i-alert"/></svg>
+      <div class="w-tx"><b>Expect a curveball.</b> The specific problem / data / possible twist is revealed only on the day — so: ① pre-build with seams you can swap (keep the data / scenario layer replaceable, never hard-code the example numbers); ② do not pack those 5 hours — leave real buffer. The day is "land it + adapt + polish", not build from scratch.</div>
+    </div>
+  </section>
+
+  <!-- 05 -->
+  <section class="band">
+    <div class="band-head">
+      <span class="bnum">05</span>
+      <svg class="ico ico-lg bh-ico"><use href="#i-docchk"/></svg>
+      <div class="bh-text"><div class="kicker">Lock it at today's meeting</div><h2>Before we leave this room — <span class="g">lock 6 things</span></h2></div>
+    </div>
+    <div class="warn">
+      <svg class="ico ico-md w-ico"><use href="#i-alert"/></svg>
+      <div class="w-tx"><b>Hard deadline — by Friday 22 May, 12:00 noon EST, we must reply to the organizers confirming participation.</b> Miss it and it counts as withdrawing; a waitlist team takes our place. To submit together: team name (pending approval) · one contact person · the signed Terms &amp; Conditions (one copy) · each person's dietary restrictions · sweatshirt sizes. Settle all of this at today's meeting. Also: no public disclosure of participation before 10 PM on 27 May (no social media).</div>
+    </div>
+    <div class="decs">
+      <div class="dec"><span class="d-no">1</span><span class="d-tx"><b>How we split the work</b>Who does frontend, who does cryptography, who does data (Section 04 has a proposal).</span></div>
+      <div class="dec"><span class="d-no">2</span><span class="d-tx"><b>Tech stack</b>React frontend + real digital signatures, no blockchain.</span></div>
+      <div class="dec"><span class="d-no">3</span><span class="d-tx"><b>Product / team name</b>"TrueNorth" or something better; the team name is due to the organizers by 5/22 noon.</span></div>
+      <div class="dec"><span class="d-no">4</span><span class="d-tx"><b>JSON data contract</b>A draft is ready; teammates sign off on it.</span></div>
+      <div class="dec"><span class="d-no">5</span><span class="d-tx"><b>Repo set up</b>One repo, an owner named, everyone has access today.</span></div>
+      <div class="dec"><span class="d-no">6</span><span class="d-tx"><b>Next sync</b>Set a check-in before the 5/27 spec drop.</span></div>
+    </div>
+    <div class="closing">
+      <div class="c-big">Lock these six, and the nine days that follow are <span class="g">pure execution — no more deliberating.</span></div>
+      <div class="c-meta"><span class="dot"></span><span>Build the chain · Catch the forger · Look like we can ship　|　TrueNorth · RedTeam DefTech Ottawa · 30 May 2026</span></div>
+    </div>
+  </section>
+
+  <div class="foot"><span>Reasoning from brief to plan → deck-en.html · Full battle plan → hackathon-playbook.md · Data contract → data-contract.md</span></div>
+
+</div>
+</body>
+</html>
