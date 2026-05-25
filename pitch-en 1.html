@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en-CA">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TrueNorth · Pitch Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#1E2530; --bg2:#272F3C; --panel:#232B37;
+    --fg:#EDEAE2; --fg2:#AEB3BC; --fg3:#7A808C;
+    --steel:#6E91B4; --steel-dim:#3F5670; --amber:#D98E3C; --green:#5BB98A; --alert:#D9544D;
+    --line:#313A48; --line2:#404B5B;
+    --sans:'IBM Plex Sans',sans-serif;
+    --cjk:'IBM Plex Sans',sans-serif;
+    --mono:'IBM Plex Mono',monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{background:#0C0F14;font-family:var(--sans);margin:0;height:100%;overflow:hidden}
+  .stage{position:fixed;top:50%;left:50%;width:1280px;height:720px;background:var(--bg);overflow:hidden}
+
+  .slide{
+    position:absolute;inset:0;display:none;padding:60px 76px;color:var(--fg);text-wrap:pretty;
+    background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:54px 54px;background-position:-1px -1px;
+  }
+  h1,h2,.bigstate,.cv-tag,.flow-pt,.turn-q{text-wrap:balance}
+  .slide::after{content:"";position:absolute;inset:0;background:var(--bg);opacity:.9;z-index:0}
+  .slide.active{display:flex;flex-direction:column}
+  .slide>*{position:relative;z-index:1}
+
+  .folio{position:absolute;top:24px;right:28px;z-index:20;font-family:var(--mono);font-size:13px;letter-spacing:.1em;color:var(--fg3)}
+  .folio b{color:var(--amber);font-weight:500}
+  .prog{position:absolute;top:0;left:0;height:3px;background:var(--amber);z-index:20;transition:width .3s ease}
+  .nav{position:absolute;bottom:22px;right:28px;z-index:20;display:flex;gap:8px}
+  .nav button{width:32px;height:32px;background:transparent;border:1px solid var(--line2);color:var(--fg2);font-size:14px;cursor:pointer;font-family:var(--mono)}
+  .nav button:hover{border-color:var(--amber);color:var(--amber)}
+
+  .kick{font-family:var(--mono);font-size:14px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber);display:flex;align-items:center;gap:12px}
+  .kick::before{content:"";width:24px;height:2px;background:var(--amber)}
+  h2{font-family:var(--sans);font-weight:700;font-size:41px;line-height:1.18;color:var(--fg);margin:15px 0 0;letter-spacing:-.01em}
+  .lead{font-size:18.5px;line-height:1.6;color:var(--fg2);margin-top:15px;max-width:66ch}
+  .lead b{color:var(--fg);font-weight:600}
+  .amber{color:var(--amber)} .steel{color:var(--steel)} .green{color:var(--green)}
+
+  .rv{opacity:0;transform:translateY(11px);transition:opacity .55s ease,transform .55s ease}
+  .slide.active .rv{opacity:1;transform:none;transition-delay:calc(var(--d,0) * .1s)}
+
+  /* cover / closing */
+  .cv-top{display:flex;justify-content:space-between;font-family:var(--mono);font-size:13px;letter-spacing:.13em;text-transform:uppercase;color:var(--fg3);padding-bottom:13px;border-bottom:1px solid var(--line2)}
+  .cv-fill{flex:1;display:flex;flex-direction:column;justify-content:center}
+  .cv-bar{width:60px;height:3px;background:var(--amber);margin:0 0 24px}
+  h1{font-family:var(--sans);font-weight:700;font-size:112px;line-height:.96;letter-spacing:-.025em;color:var(--fg)}
+  .cv-tag{font-size:23px;line-height:1.5;color:var(--fg2);margin-top:24px;max-width:42ch}
+  .cv-tag b{color:var(--amber);font-weight:600}
+  .cv-meta{font-family:var(--mono);font-size:13px;letter-spacing:.07em;color:var(--fg3);padding-top:13px;border-top:1px solid var(--line2)}
+
+  /* big statement */
+  .mid{flex:1;display:flex;flex-direction:column;justify-content:center}
+  .bigstate{font-family:var(--sans);font-weight:700;font-size:52px;line-height:1.26;letter-spacing:-.01em;color:var(--fg)}
+  .bigstate.sm{font-size:42px}
+  .bigstate .hl{color:var(--amber)}
+  .stakes{font-size:19px;line-height:1.66;color:var(--fg2);margin-top:28px;max-width:62ch;padding-left:20px;border-left:2px solid var(--alert)}
+  .stakes b{color:var(--fg);font-weight:600}
+  .turn-q{font-family:var(--sans);font-weight:400;font-size:23px;color:var(--fg3);margin-bottom:9px}
+  .verbs{display:flex;gap:13px;margin-top:32px}
+  .verb{font-family:var(--mono);font-size:14px;letter-spacing:.07em;text-transform:uppercase;color:var(--steel);border:1px solid var(--line2);padding:11px 19px}
+  .verb b{color:var(--amber);font-weight:500}
+
+  /* gauge */
+  .gintro{font-size:18px;line-height:1.55;color:var(--fg2);margin-top:13px;max-width:70ch}
+  .gintro b{color:var(--fg);font-weight:600}
+  .gauge{position:relative;margin:54px 8px 0}
+  .g-pin{position:absolute;left:81%;top:-48px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center}
+  .g-pin .pn{font-family:var(--sans);font-weight:700;font-size:38px;line-height:.8;color:var(--fg)}
+  .g-pin .ps{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-top:6px}
+  .g-pin .pstem{width:2px;height:15px;background:var(--amber);margin-top:8px}
+  .g-bar{display:flex;height:50px}
+  .g-z{display:flex;align-items:center;justify-content:center;font-size:13px;letter-spacing:.04em;font-family:var(--mono);text-transform:uppercase}
+  .g-fail{flex-grow:51;background:var(--bg2);color:var(--fg3);border:1px solid var(--line2)}
+  .g-mic{flex-grow:47;background:rgba(110,145,180,.16);color:var(--fg);border:1px solid var(--steel-dim);border-left:none}
+  .g-poc{flex-grow:2;background:var(--steel);border:1px solid var(--steel)}
+  .g-axis{position:relative;height:44px;margin-top:11px}
+  .g-tk{position:absolute;transform:translateX(-50%);text-align:center}
+  .g-tk.l{transform:translateX(0);text-align:left}
+  .g-tk.r{transform:translateX(-100%);text-align:right}
+  .g-tk .tn{font-family:var(--sans);font-size:21px;font-weight:600;color:var(--fg2)}
+  .g-tk.edge .tn{font-size:15px;color:var(--fg3)}
+  .g-tk .tl{font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--fg3);margin-top:4px;white-space:nowrap}
+  .g-mk{position:absolute;top:-11px;width:2px;height:11px;background:var(--steel-dim)}
+
+  /* flow / how it works */
+  .flow-pt{margin-top:26px;font-family:var(--sans);font-weight:600;font-size:22px;line-height:1.45;color:var(--fg)}
+  .flow-pt .amber{color:var(--amber)}
+
+  /* attacks */
+  .atks{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-top:26px}
+  .atk{background:var(--panel);border:1px solid var(--line2);border-top:2px solid var(--alert);padding:20px 18px;display:flex;flex-direction:column;gap:10px}
+  .atk .an{font-family:var(--mono);font-size:13px;color:var(--steel);letter-spacing:.08em}
+  .atk .at{font-family:var(--sans);font-weight:700;font-size:25px;color:var(--fg)}
+  .atk .ad{font-size:15px;line-height:1.55;color:var(--fg2);flex:1}
+  .atk .ar{font-family:var(--mono);font-size:12.5px;line-height:1.5;color:var(--alert);background:rgba(217,84,77,.1);border-left:3px solid var(--alert);padding:8px 0 8px 10px}
+  .honest{margin-top:22px;display:flex;gap:14px;align-items:flex-start;border-top:1px solid var(--line2);padding-top:18px}
+  .honest .ht{font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);flex:none;padding-top:2px}
+  .honest .hx{font-size:16px;line-height:1.6;color:var(--fg2)}
+  .honest .hx b{color:var(--fg);font-weight:600}
+
+  /* 3 cards */
+  .cards3{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-top:26px}
+  .card{background:var(--panel);border:1px solid var(--line2);border-top:2px solid var(--steel);padding:20px 18px;display:flex;flex-direction:column;gap:10px}
+  .card .c-who{font-family:var(--mono);font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--amber)}
+  .card .c-t{font-family:var(--sans);font-weight:600;font-size:22px;color:var(--fg)}
+  .card .c-d{font-size:15px;line-height:1.55;color:var(--fg2)}
+  .miniframe{height:90px;background:var(--bg2);border:1px dashed var(--steel-dim);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);margin-top:auto;text-align:center;padding:0 8px}
+  .bigframe{margin-top:22px;height:198px;background:var(--bg2);border:1px dashed var(--steel-dim);position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+  .bigframe .bf-l{font-size:16.5px;color:var(--fg2)}
+  .bigframe .bf-s{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3)}
+  .bigframe .corner{position:absolute;width:13px;height:13px;border:2px solid var(--amber)}
+  .bigframe .corner.a{top:8px;left:8px;border-right:none;border-bottom:none}
+  .bigframe .corner.b{bottom:8px;right:8px;border-left:none;border-top:none}
+  .core-grid{display:grid;grid-template-columns:1.2fr 0.95fr;gap:44px;align-items:center;flex:1}
+  .srcline{margin-top:auto;padding-top:13px;border-top:1px solid var(--line2);font-family:var(--mono);font-size:11.5px;line-height:1.6;letter-spacing:.02em;color:var(--fg3)}
+  .askq{display:inline-block;margin-top:30px;font-family:var(--mono);font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--steel);border:1px solid var(--steel-dim);padding:11px 20px}
+  .dag{margin-top:18px;display:flex;justify-content:center}
+  .dag svg{width:100%;max-width:980px;height:auto}
+  .steprib{display:flex;align-items:stretch;gap:9px;margin-top:16px}
+  .steprib .sr{flex:1;background:var(--panel);border:1px solid var(--line2);border-left:2px solid var(--steel);padding:11px 14px;display:flex;flex-direction:column;gap:4px}
+  .steprib .srn{font-family:var(--mono);font-size:12px;color:var(--amber);letter-spacing:.06em}
+  .steprib .srt{font-family:var(--sans);font-weight:600;font-size:15px;color:var(--fg)}
+  .src-hl{color:var(--steel)}
+  .eqn{margin-top:20px;border:1px solid var(--line2);background:var(--panel)}
+  .eqn-row{display:grid;grid-template-columns:128px 1fr 108px;align-items:center;padding:9px 18px;font-family:var(--mono);font-size:14px}
+  .eqn-row+.eqn-row{border-top:1px solid var(--line)}
+  .eqn-l{color:var(--fg3);font-size:12.5px;text-transform:uppercase;letter-spacing:.04em}
+  .eqn-v{color:var(--fg2)}
+  .eqn-v b{color:var(--amber);font-weight:500}
+  .eqn-r{color:var(--fg);text-align:right;font-weight:500}
+  .eqn-row.fin{background:rgba(110,145,180,.1)}
+  .eqn-row.fin .eqn-r{color:var(--steel);font-size:19px}
+  .vshort{display:flex;margin-top:18px;border-top:1px solid var(--line2)}
+  .vs-i{flex:1;padding:14px 0 0;display:flex;gap:11px;align-items:baseline;font-size:14.5px;line-height:1.5;color:var(--fg2)}
+  .vs-i+.vs-i{border-left:1px solid var(--line2);padding-left:28px}
+  .vs-i .vsm{font-family:var(--sans);font-size:20px;font-weight:700;flex:none}
+  .vs-i.yes .vsm{color:var(--green)}
+  .vs-i.no .vsm{color:var(--alert)}
+  .vs-i b{color:var(--fg);font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+  <div class="prog" id="prog"></div>
+  <div class="folio"><b id="fNow">01</b> / <span id="fTot">10</span></div>
+
+  <!-- 01 COVER -->
+  <section class="slide cover">
+    <div class="cv-top"><span>RedTeam DefTech Hackathon · Ottawa</span><span>2026 · 05 · 30</span></div>
+    <div class="cv-fill">
+      <div class="cv-bar rv" style="--d:0"></div>
+      <h1 class="rv" style="--d:0">TrueNorth</h1>
+      <div class="cv-tag rv" style="--d:1">Make every <b>&ldquo;Made in Canada&rdquo;</b> claim a fact you can prove.</div>
+    </div>
+    <div class="cv-meta">Defence supply-chain provenance verification · Sikai · KC · Zhengshen</div>
+  </section>
+
+  <!-- 02 HOOK -->
+  <section class="slide">
+    <div class="kick rv" style="--d:0">The situation</div>
+    <div class="mid">
+      <div class="bigstate rv" style="--d:1">Canada just made Buy Canadian law.<br>But a defence supply chain you <span class="hl">can&rsquo;t verify</span> is itself an attack surface.</div>
+      <div class="stakes rv" style="--d:2">A &ldquo;Made in Canada&rdquo; drone can carry a core chip from a foreign country &mdash; and that chip could be a backdoor. <b>No tool today can catch it.</b> In defence supply chains, counterfeit parts run as high as 15%.</div>
+    </div>
+  </section>
+
+  <!-- 03 GAP -->
+  <section class="slide">
+    <div class="kick rv" style="--d:0">The gap</div>
+    <h2 class="rv" style="--d:1">The number the policy depends on is paper &mdash; filled in by the supplier</h2>
+    <div class="lead rv" style="--d:2">Buy Canadian now scores defence bids on a &ldquo;Canadian-content %&rdquo; &mdash; mandatory on contracts &ge; $25M, with the threshold dropping to $5M in spring 2026. <b>That percentage is the bid score. It is money.</b></div>
+    <div class="flow-pt rv" style="--d:3">But today that number comes from <span class="amber">a self-reported supplier form plus a manual spot-check</span>.<br>Someone has every incentive to inflate it &mdash; and nothing can tell.</div>
+  </section>
+
+  <!-- 04 CORE -->
+  <section class="slide">
+    <div class="kick rv" style="--d:0">TrueNorth</div>
+    <div class="core-grid">
+      <div>
+        <div class="turn-q rv" style="--d:1">What we do is simple &mdash;</div>
+        <div class="bigstate sm rv" style="--d:1">Make that number <span class="hl">provable.</span></div>
+        <div class="lead rv" style="--d:2">TrueNorth issues a signed attestation for every contribution along the chain, and sums them into a Canadian-content % &mdash; <b>one no one can alter, and anyone can recompute for themselves.</b></div>
+        <div class="verbs rv" style="--d:3">
+          <span class="verb">Chain it</span>
+          <span class="verb">Compute it</span>
+          <span class="verb"><b>Catch the fraud</b></span>
+        </div>
+      </div>
+      <div class="bigframe rv" style="--d:2">
+        <span class="corner a"></span><span class="corner b"></span>
+        <span class="bf-l">Product home screen</span>
+        <span class="bf-s">Screenshot placeholder</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 HOW IT WORKS -->
+  <section class="slide">
+    <div class="kick rv" style="--d:0">How it works</div>
+    <h2 class="rv" style="--d:1">From a pile of parts, to a number you can prove</h2>
+    <div class="lead rv" style="--d:2">Every node carries its own <b>cost</b> and the <b>Canadian portion</b> inside it. Sum up the chain tier by tier and the drone&rsquo;s Canadian % falls out &mdash; and because the graph mirrors the cost structure, <b>any child that doesn&rsquo;t reconcile with its parent is exposed at once.</b></div>
+    <div class="dag rv" style="--d:3">
+      <svg viewBox="0 0 1000 282" xmlns="http://www.w3.org/2000/svg">
+        <text x="113" y="13" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="11.5" letter-spacing="1.2" fill="#7A808C">COMPONENTS · TIER 3</text>
+        <text x="500" y="13" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="11.5" letter-spacing="1.2" fill="#7A808C">SUB-SYSTEMS · TIER 2</text>
+        <text x="887" y="13" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="11.5" letter-spacing="1.2" fill="#7A808C">AIRCRAFT · TIER 1</text>
+        <line x1="208" y1="50" x2="405" y2="98" stroke="#3F5670" stroke-width="1.6"/>
+        <line x1="208" y1="114" x2="405" y2="220" stroke="#3F5670" stroke-width="1.6"/>
+        <line x1="208" y1="178" x2="405" y2="220" stroke="#3F5670" stroke-width="1.6"/>
+        <line x1="208" y1="242" x2="405" y2="98" stroke="#D98E3C" stroke-width="2.2"/>
+        <line x1="595" y1="98" x2="792" y2="159" stroke="#3F5670" stroke-width="1.6"/>
+        <line x1="595" y1="220" x2="792" y2="159" stroke="#3F5670" stroke-width="1.6"/>
+        <g><rect x="18" y="24" width="190" height="52" rx="3" fill="#232B37" stroke="#404B5B" stroke-width="1.5"/><text x="113" y="45" text-anchor="middle" font-family="'IBM Plex Sans',sans-serif" font-size="14.5" fill="#EDEAE2">Frame</text><text x="113" y="64" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="11.5" fill="#AEB3BC">$130 · CA $130</text></g>
+        <g><rect x="18" y="88" width="190" height="52" rx="3" fill="#232B37" stroke="#404B5B" stroke-width="1.5"/><text x="113" y="109" text-anchor="middle" font-family="'IBM Plex Sans',sans-serif" font-size="14.5" fill="#EDEAE2">Motors</text><text x="113" y="128" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="11.5" fill="#AEB3BC">$200 · CA $200</text></g>
+        <g><rect x="18" y="152" width="190" height="52" rx="3" fill="#232B37" stroke="#404B5B" stroke-width="1.5"/><text x="113" y="173" text-anchor="middle" font-family="'IBM Plex Sans',sans-serif" font-size="14.5" fill="#EDEAE2">Battery</text><text x="113" y="192" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="11.5" fill="#AEB3BC">$230 · CA $230</text></g>
+        <g><rect x="18" y="216" width="190" height="52" rx="3" fill="#2E2922" stroke="#D98E3C" stroke-width="1.8"/><text x="113" y="237" text-anchor="middle" font-family="'IBM Plex Sans',sans-serif" font-size="14.5" fill="#D98E3C">Imported chip</text><text x="113" y="256" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="11.5" fill="#D98E3C">$130 · CA $0</text></g>
+        <g><rect x="405" y="72" width="190" height="52" rx="3" fill="#232B37" stroke="#404B5B" stroke-width="1.5"/><text x="500" y="93" text-anchor="middle" font-family="'IBM Plex Sans',sans-serif" font-size="14.5" fill="#EDEAE2">Flight controller</text><text x="500" y="112" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="11.5" fill="#AEB3BC">$260 · CA $130</text></g>
+        <g><rect x="405" y="194" width="190" height="52" rx="3" fill="#232B37" stroke="#404B5B" stroke-width="1.5"/><text x="500" y="215" text-anchor="middle" font-family="'IBM Plex Sans',sans-serif" font-size="14.5" fill="#EDEAE2">Powertrain</text><text x="500" y="234" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="11.5" fill="#AEB3BC">$430 · CA $430</text></g>
+        <g><rect x="792" y="133" width="190" height="52" rx="3" fill="#232B37" stroke="#6E91B4" stroke-width="2"/><text x="887" y="154" text-anchor="middle" font-family="'IBM Plex Sans',sans-serif" font-size="14.5" fill="#EDEAE2">Drone</text><text x="887" y="173" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="11.5" fill="#AEB3BC">$690 · CA $560</text></g>
+        <text x="887" y="206" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="13" font-weight="600" fill="#6E91B4">&uarr; Canadian content 81%</text>
+      </svg>
+    </div>
+    <div class="steprib rv" style="--d:4">
+      <div class="sr"><span class="srn">01</span><span class="srt">Sign each segment</span></div>
+      <div class="sr"><span class="srn">02</span><span class="srt">Hash into a DAG</span></div>
+      <div class="sr"><span class="srn">03</span><span class="srt">Recurse up the chain</span></div>
+      <div class="sr"><span class="srn">04</span><span class="srt">Anyone can recompute</span></div>
+    </div>
+  </section>
+
+  <!-- 06 SEE IT WORK -->
+  <section class="slide">
+    <div class="kick rv" style="--d:0">See it run</div>
+    <h2 class="rv" style="--d:1">One drone, one hard verdict</h2>
+    <div class="gintro rv" style="--d:2">Take the DAG from the previous slide &mdash; the system sums up the chain, <b>computes 81%</b>, and returns the legal verdict.</div>
+    <div class="gauge rv" style="--d:3">
+      <div class="g-pin"><span class="pn">81%</span><span class="ps">this drone</span><span class="pstem"></span></div>
+      <div class="g-bar">
+        <div class="g-z g-fail">Fails</div>
+        <div class="g-z g-mic">Made in Canada ✓</div>
+        <div class="g-z g-poc"></div>
+      </div>
+      <div class="g-axis">
+        <div class="g-mk" style="left:0%"></div>
+        <div class="g-mk" style="left:51%"></div>
+        <div class="g-mk" style="left:98%"></div>
+        <div class="g-tk edge l" style="left:0%"><div class="tn">0</div></div>
+        <div class="g-tk" style="left:51%"><div class="tn">51</div><div class="tl">Made in Canada threshold</div></div>
+        <div class="g-tk r" style="left:98%"><div class="tn">98</div><div class="tl">Product of Canada threshold</div></div>
+      </div>
+    </div>
+    <div class="eqn rv" style="--d:4">
+      <div class="eqn-row"><span class="eqn-l">Canadian content</span><span class="eqn-v">Frame 130 + Motors 200 + Battery 230 + Imported chip <b>0</b></span><span class="eqn-r">= $560</span></div>
+      <div class="eqn-row"><span class="eqn-l">Total cost</span><span class="eqn-v">Frame 130 + Motors 200 + Battery 230 + Imported chip <b>130</b></span><span class="eqn-r">= $690</span></div>
+      <div class="eqn-row fin"><span class="eqn-l">Canadian %</span><span class="eqn-v">$560 &divide; $690 &nbsp;·&nbsp; by total direct cost (Competition Bureau statutory basis)</span><span class="eqn-r">81%</span></div>
+    </div>
+    <div class="vshort rv" style="--d:5">
+      <div class="vs-i yes"><span class="vsm">✓</span><div><b>Made in Canada</b> &mdash; 81% &ge; 51%, and final assembly is in Canada</div></div>
+      <div class="vs-i no"><span class="vsm">✗</span><div><b>Product of Canada</b> &mdash; 81% &lt; 98%, held down by that imported chip</div></div>
+    </div>
+    <div class="srcline rv" style="--d:6">Thresholds 51% / 98% &mdash; source: <span class="src-hl">Competition Bureau of Canada, &ldquo;Made in Canada / Product of Canada&rdquo; claims guidance</span> · drone parts and figures are an illustrative example.</div>
+  </section>
+
+  <!-- 07 RED TEAM OURSELVES -->
+  <section class="slide">
+    <div class="kick rv" style="--d:0">We attacked our own system</div>
+    <h2 class="rv" style="--d:1">Catch fraud live &mdash; and say plainly what we can&rsquo;t catch</h2>
+    <div class="atks">
+      <div class="atk rv" style="--d:2"><div class="an">ATTACK 01</div><div class="at">Tamper</div><div class="ad">Secretly change the imported chip&rsquo;s cost from $130 to $13.</div><div class="ar">✗ Hash mismatch · content no longer matches its signature</div></div>
+      <div class="atk rv" style="--d:3"><div class="an">ATTACK 02</div><div class="at">Forge</div><div class="ad">Inject a fake attestation signed with an unregistered key.</div><div class="ar">✗ Unknown issuer · does not chain to a trusted identity</div></div>
+      <div class="atk rv" style="--d:4"><div class="an">ATTACK 03</div><div class="at">Replay</div><div class="ad">Paste another drone&rsquo;s genuine attestation onto this one.</div><div class="ar">✗ Replay detected · product binding mismatch</div></div>
+    </div>
+    <div class="honest rv" style="--d:5">
+      <span class="ht">In all honesty</span>
+      <span class="hx">Reconciliation catches a <b>self-contradictory</b> lie &mdash; but not one that is <b>consistent across the entire chain</b>. So we add three more layers &mdash; <b>verified-identity binding · economic liability · sampled-audit anchoring</b>. Stating the limits is itself defence-grade credibility.</span>
+    </div>
+  </section>
+
+  <!-- 08 A REAL PRODUCT -->
+  <section class="slide">
+    <div class="kick rv" style="--d:0">Product</div>
+    <h2 class="rv" style="--d:1">Three roles, three workspaces</h2>
+    <div class="lead rv" style="--d:2">Not a command line for engineers &mdash; a product. Supplier, purchaser, auditor &mdash; each opens their own and just uses it.</div>
+    <div class="cards3">
+      <div class="card rv" style="--d:3"><div class="c-who">Supplier</div><div class="c-t">Issue</div><div class="c-d">With a verified identity, sign a cryptographic attestation for your own contribution.</div><div class="miniframe">Placeholder · issuing screen</div></div>
+      <div class="card rv" style="--d:4"><div class="c-who">Purchaser</div><div class="c-t">Look up</div><div class="c-d">Look up a device &mdash; see provenance, the %, and the legal verdict.</div><div class="miniframe">Placeholder · lookup screen</div></div>
+      <div class="card rv" style="--d:5"><div class="c-who">Auditor</div><div class="c-t">Gatekeep</div><div class="c-d">Re-check along the cryptographic trust chain; if anyone faked it, a red flag fires.</div><div class="miniframe">Placeholder · audit screen</div></div>
+    </div>
+  </section>
+
+  <!-- 09 ADOPTION -->
+  <section class="slide">
+    <div class="kick rv" style="--d:0">Adoption</div>
+    <h2 class="rv" style="--d:1">Why now &mdash; and genuinely deployable</h2>
+    <div class="cards3">
+      <div class="card rv" style="--d:2"><div class="c-who">Who pays</div><div class="c-t">Three users</div><div class="c-d">Defence suppliers bidding for contracts, primes who must verify, and ISED who audits.</div></div>
+      <div class="card rv" style="--d:3"><div class="c-who">Why now</div><div class="c-t">Policy window</div><div class="c-d">Buy Canadian is law; the threshold drops to $5M in spring 2026; strategic-partner selection closes summer 2026.</div></div>
+      <div class="card rv" style="--d:4"><div class="c-who">How it fits</div><div class="c-t">No disruption</div><div class="c-d">Sits alongside existing bidding / audit workflows &mdash; no CAF reorg; the same mechanism can be licensed to NATO allies.</div></div>
+    </div>
+    <div class="bigframe rv" style="--d:5">
+      <span class="corner a"></span><span class="corner b"></span>
+      <span class="bf-l">Sample · the TrueNorth verification report filed with a defence bid</span>
+      <span class="bf-s">Screenshot placeholder</span>
+    </div>
+  </section>
+
+  <!-- 10 CLOSING -->
+  <section class="slide cover">
+    <div class="cv-top"><span>TrueNorth</span><span>RedTeam DefTech · Ottawa · 2026·05·30</span></div>
+    <div class="cv-fill">
+      <div class="cv-bar rv" style="--d:0"></div>
+      <div class="bigstate rv" style="--d:0">Proof, <span class="hl">not promises.</span></div>
+      <div class="cv-tag rv" style="--d:1">Not just drones &mdash; every regulated supply chain needs a verifiable chain of evidence.</div>
+      <div class="askq rv" style="--d:2">Any Questions?</div>
+    </div>
+    <div class="cv-meta">Turning &ldquo;Made in Canada&rdquo; into a verifiable fact · Sikai · KC · Zhengshen</div>
+  </section>
+
+  <div class="nav"><button id="prev">‹</button><button id="next">›</button></div>
+</div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const total=slides.length;let idx=0;
+  const fNow=document.getElementById('fNow'),prog=document.getElementById('prog');
+  document.getElementById('fTot').textContent=String(total).padStart(2,'0');
+  function go(n){
+    idx=Math.max(0,Math.min(total-1,n));
+    slides.forEach((s,i)=>s.classList.toggle('active',i===idx));
+    fNow.textContent=String(idx+1).padStart(2,'0');
+    prog.style.width=((idx+1)/total*100)+'%';
+  }
+  document.addEventListener('keydown',e=>{
+    if(['ArrowRight','ArrowDown','PageDown',' '].includes(e.key)){e.preventDefault();go(idx+1);}
+    else if(['ArrowLeft','ArrowUp','PageUp'].includes(e.key)){e.preventDefault();go(idx-1);}
+    else if(e.key==='Home')go(0);else if(e.key==='End')go(total-1);
+  });
+  document.getElementById('next').addEventListener('click',()=>go(idx+1));
+  document.getElementById('prev').addEventListener('click',()=>go(idx-1));
+  const sp=new URLSearchParams(location.search).get('s');
+  go(sp?parseInt(sp,10)-1:0);
+  function fit(){var s=Math.min(innerWidth/1280,innerHeight/720);document.getElementById('stage').style.transform='translate(-50%,-50%) scale('+s+')';}
+  addEventListener('resize',fit);fit();
+</script>
+</body>
+</html>

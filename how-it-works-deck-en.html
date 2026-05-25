@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en-CA">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TrueNorth · How It Works · Plain-English Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --noir:#000000; --panel:#0A0907; --card:#141310; --elevated:#1E1C18;
+    --bone:#ECE6D5; --bone-2:#D6CFBB; --caption:#A89F88; --muted:#6F6957;
+    --gold:#AA9068; --gold-dim:#8A7656; --rule:#5C4E35; --rule-soft:#241F18;
+    --pass:#5BD68A; --alert:#D9544D;
+    --sans:'Manrope',system-ui,sans-serif;
+    --serif:'Cormorant Garamond',Georgia,serif;
+    --disp:'Cormorant Garamond',Georgia,serif;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    background:var(--noir);color:var(--bone);font-family:var(--sans);
+    font-weight:400;-webkit-font-smoothing:antialiased;line-height:1.6;
+    font-feature-settings:"tnum";overflow:hidden;
+  }
+  ::selection{background:var(--gold);color:var(--noir)}
+
+  /* ---------- icons ---------- */
+  .ico{fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .ico-xs{width:14px;height:14px}
+  .ico-sm{width:18px;height:18px}
+  .ico-md{width:25px;height:25px}
+  .ico-lg{width:32px;height:32px}
+  .ico-xl{width:48px;height:48px}
+
+  /* ---------- deck shell ---------- */
+  .deck{position:relative;width:100vw;height:100vh;overflow:hidden}
+  .slides{position:relative;width:100%;height:100%}
+  .slide{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;justify-content:center;
+    padding:clamp(36px,5vh,72px) clamp(40px,7vw,120px);
+    opacity:0;transition:opacity .45s ease;pointer-events:none;
+    overflow-y:auto;
+  }
+  .slide.active{opacity:1;pointer-events:auto;z-index:2}
+  .slide-inner{max-width:1180px;margin:0 auto;width:100%}
+
+  /* ---------- navigation ---------- */
+  .nav{
+    position:fixed;bottom:18px;left:0;right:0;z-index:10;
+    display:flex;justify-content:center;align-items:center;gap:18px;
+    pointer-events:none;
+  }
+  .nav-btn{
+    background:var(--card);border:1px solid var(--rule);color:var(--bone);
+    width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;pointer-events:auto;transition:all .2s ease;
+    font-family:var(--mono);font-size:16px;
+  }
+  .nav-btn:hover{background:var(--elevated);border-color:var(--gold)}
+  .nav-counter{
+    font-family:var(--mono);font-size:12px;letter-spacing:.12em;
+    color:var(--caption);text-transform:uppercase;
+    background:var(--card);border:1px solid var(--rule-soft);
+    padding:8px 14px;pointer-events:auto;
+  }
+  .nav-counter .cur{color:var(--gold)}
+  .progress{
+    position:fixed;top:0;left:0;right:0;height:2px;
+    background:var(--rule-soft);z-index:10;
+  }
+  .progress-bar{
+    height:100%;background:var(--gold);
+    transition:width .35s ease;
+  }
+
+  /* ---------- masthead block ---------- */
+  .mark{display:flex;align-items:center;gap:13px;margin-bottom:28px}
+  .mark .dot{width:11px;height:11px;background:var(--gold);transform:rotate(45deg);flex:none}
+  .mark .mt{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--caption)}
+
+  /* ---------- typography ---------- */
+  h1{
+    font-family:var(--serif);font-weight:600;
+    font-size:clamp(46px,7vw,88px);line-height:1.04;letter-spacing:-.01em;color:var(--bone);
+  }
+  h1 .g{color:var(--gold);font-style:italic}
+  h2{
+    font-family:var(--serif);font-weight:600;
+    font-size:clamp(32px,4.4vw,54px);line-height:1.12;color:var(--bone);letter-spacing:-.005em;
+  }
+  h2 .g{color:var(--gold)}
+  h3{
+    font-family:var(--serif);font-weight:600;
+    font-size:clamp(22px,2.6vw,30px);line-height:1.18;color:var(--bone);
+  }
+  .kicker{
+    font-family:var(--mono);font-size:12px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--gold);margin-bottom:18px;
+  }
+  .lead{
+    font-size:clamp(17px,1.9vw,22px);color:var(--bone-2);line-height:1.6;
+    margin-top:20px;max-width:62ch;font-weight:300;
+  }
+  .lead b{color:var(--bone);font-weight:500}
+  p{font-size:clamp(15px,1.55vw,17.5px);color:var(--bone-2);line-height:1.6}
+  p b{color:var(--bone);font-weight:600}
+  .gold{color:var(--gold)}
+  .alert-c{color:var(--alert)}
+  .pass-c{color:var(--pass)}
+
+  /* ---------- slide number badge ---------- */
+  .snum{
+    font-family:var(--disp);font-weight:600;font-size:clamp(40px,5vw,60px);
+    color:var(--gold);line-height:.8;margin-bottom:8px;
+  }
+  .slide-head{display:flex;align-items:flex-end;gap:clamp(16px,2vw,28px);margin-bottom:clamp(20px,2.6vw,32px)}
+  .slide-head .sh-tx{display:flex;flex-direction:column;gap:6px}
+
+  /* ---------- title slide ---------- */
+  .title-slide{align-items:center;justify-content:center;text-align:left}
+  .title-slide .ts-inner{max-width:1000px}
+  .title-tag{
+    font-family:var(--mono);font-size:13px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--caption);margin-bottom:26px;
+    display:flex;align-items:center;gap:14px;
+  }
+  .title-tag .dot{width:10px;height:10px;background:var(--gold);transform:rotate(45deg)}
+  .ts-sub{
+    margin-top:28px;font-size:clamp(18px,2vw,24px);color:var(--bone-2);
+    font-weight:300;line-height:1.55;max-width:60ch;
+  }
+  .ts-meta{
+    margin-top:48px;padding-top:24px;border-top:1px solid var(--rule);
+    display:flex;gap:32px;flex-wrap:wrap;
+    font-family:var(--mono);font-size:12px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted);
+  }
+  .ts-meta .key{color:var(--gold)}
+
+  /* ---------- problem slide ---------- */
+  .stat-row{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+    background:var(--rule-soft);border:1px solid var(--rule-soft);margin-top:32px;
+  }
+  .stat{background:var(--noir);padding:24px 22px}
+  .stat .sn{
+    font-family:var(--disp);font-weight:600;font-size:clamp(36px,4.2vw,52px);
+    color:var(--gold);line-height:1;margin-bottom:8px;
+  }
+  .stat .sl{font-size:14.5px;color:var(--bone-2);line-height:1.5}
+
+  /* ---------- three-question block ---------- */
+  .q-block{margin-top:30px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .q-card{
+    background:var(--card);border:1px solid var(--rule);padding:22px 22px;
+    display:flex;flex-direction:column;gap:10px;
+  }
+  .q-card .q-n{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
+  .q-card .q-t{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--bone);line-height:1.3}
+
+  /* ---------- concept slides (3 building blocks) ---------- */
+  .concept-grid{
+    display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,3vw,48px);
+    margin-top:18px;align-items:start;
+  }
+  .concept-vis{
+    background:var(--panel);border:1px solid var(--rule-soft);
+    padding:clamp(28px,3vw,44px);min-height:340px;
+    display:flex;flex-direction:column;justify-content:center;gap:20px;
+  }
+  .concept-text p{margin-top:16px}
+  .concept-text .props{
+    margin-top:24px;display:flex;flex-direction:column;gap:14px;
+  }
+  .prop{display:flex;gap:14px;align-items:flex-start}
+  .prop .p-mk{color:var(--gold);font-family:var(--mono);font-size:14px;line-height:1.3;flex:none;width:24px}
+  .prop .p-tx{font-size:clamp(14px,1.45vw,16px);color:var(--bone-2);line-height:1.55}
+  .prop .p-tx b{color:var(--bone)}
+
+  /* visual: fingerprint */
+  .fp-demo{display:flex;flex-direction:column;gap:18px}
+  .fp-line{display:flex;align-items:center;gap:14px}
+  .fp-doc{
+    background:var(--card);border:1px solid var(--rule);padding:14px 16px;
+    font-size:13.5px;color:var(--bone-2);flex:1;line-height:1.4;
+  }
+  .fp-doc b{color:var(--bone);font-weight:600}
+  .fp-arrow{color:var(--gold);font-family:var(--mono);font-size:18px;flex:none}
+  .fp-hash{
+    background:var(--elevated);border:1px solid var(--gold-dim);padding:14px 16px;
+    font-family:var(--mono);font-size:12.5px;color:var(--gold);flex:1;
+    word-break:break-all;line-height:1.5;
+  }
+  .fp-note{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--caption);text-align:center;padding:6px 0}
+
+  /* visual: keys */
+  .key-demo{display:flex;flex-direction:column;gap:18px}
+  .key-card{
+    display:flex;gap:16px;align-items:center;padding:18px 18px;
+    background:var(--card);border:1px solid var(--rule);
+  }
+  .key-card.priv{border-color:var(--alert)}
+  .key-card.pub{border-color:var(--pass)}
+  .key-card .k-ico{
+    width:54px;height:54px;border:1px solid;display:flex;align-items:center;justify-content:center;flex:none;
+  }
+  .key-card.priv .k-ico{border-color:var(--alert);color:var(--alert)}
+  .key-card.pub .k-ico{border-color:var(--pass);color:var(--pass)}
+  .key-card .k-tx{flex:1}
+  .key-card .k-name{font-family:var(--serif);font-weight:600;font-size:19px;color:var(--bone);line-height:1.2;margin-bottom:4px}
+  .key-card .k-desc{font-size:13.5px;color:var(--bone-2);line-height:1.5}
+  .key-arrow{
+    text-align:center;font-family:var(--mono);font-size:12px;
+    letter-spacing:.1em;color:var(--caption);text-transform:uppercase;
+    padding:4px 0;
+  }
+
+  /* visual: attestation card */
+  .att-demo{
+    background:var(--card);border:1px solid var(--gold-dim);
+    padding:22px 24px;font-family:var(--mono);font-size:13px;line-height:1.65;
+    color:var(--bone-2);position:relative;
+  }
+  .att-demo .att-label{
+    position:absolute;top:-10px;left:18px;background:var(--noir);
+    padding:0 10px;font-size:10.5px;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;
+  }
+  .att-demo .k{color:var(--gold)}
+  .att-demo .v{color:var(--bone)}
+  .att-demo .stamp{
+    margin-top:14px;padding-top:14px;border-top:1px dashed var(--rule);
+    color:var(--pass);font-size:12px;display:flex;align-items:center;gap:8px;
+  }
+
+  /* ---------- step rows (sign / verify) ---------- */
+  .steps{display:flex;flex-direction:column;gap:12px;margin-top:24px}
+  .step{
+    display:grid;grid-template-columns:60px 1fr 1.4fr;gap:24px;align-items:center;
+    background:var(--card);border:1px solid var(--rule);padding:18px 22px;
+  }
+  .step .s-n{
+    font-family:var(--disp);font-weight:600;font-size:36px;color:var(--gold);line-height:.9;
+  }
+  .step .s-w{font-family:var(--serif);font-weight:600;font-size:17px;color:var(--bone);line-height:1.3}
+  .step .s-p{font-size:14.5px;color:var(--bone-2);line-height:1.55}
+  .step .s-p b{color:var(--bone)}
+
+  /* ---------- chain diagram ---------- */
+  .chain{
+    margin-top:24px;background:var(--panel);border:1px solid var(--rule-soft);
+    padding:clamp(20px,2.6vw,32px);
+  }
+  .chain-tiers{display:grid;grid-template-columns:1fr 28px 1fr 28px 1fr;gap:14px;align-items:center}
+  .chain-col{display:flex;flex-direction:column;gap:11px}
+  .chain-col .tlabel{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;
+    color:var(--muted);text-transform:uppercase;margin-bottom:4px;
+  }
+  .chain-node{
+    background:var(--card);border:1px solid var(--rule);padding:12px 14px;
+    display:flex;flex-direction:column;gap:4px;
+  }
+  .chain-node.ca{border-color:var(--gold-dim)}
+  .chain-node .cn-name{font-size:14px;color:var(--bone);font-weight:600;line-height:1.25}
+  .chain-node .cn-meta{font-family:var(--mono);font-size:10.5px;color:var(--caption);letter-spacing:.02em}
+  .chain-final{
+    background:var(--elevated);border:2px solid var(--gold);padding:18px 16px;
+    display:flex;flex-direction:column;gap:6px;justify-content:center;align-items:center;height:100%;
+  }
+  .chain-final .cf-name{font-family:var(--serif);font-weight:600;font-size:17px;color:var(--bone);text-align:center}
+  .chain-final .cf-pct{font-family:var(--disp);font-weight:600;font-size:42px;line-height:1;color:var(--gold)}
+  .chain-final .cf-l{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;color:var(--caption);text-transform:uppercase}
+  .chain-arrow{
+    color:var(--gold);font-family:var(--mono);font-size:22px;text-align:center;
+  }
+  .chain-cap{
+    margin-top:16px;font-size:14.5px;color:var(--bone-2);line-height:1.55;text-align:center;
+  }
+  .chain-cap b{color:var(--bone)}
+
+  /* ---------- percentage / verdict gauge ---------- */
+  .pct-block{margin-top:18px}
+  .calc{
+    background:var(--card);border:1px solid var(--rule);padding:22px 26px;
+    font-family:var(--mono);font-size:15px;line-height:1.9;color:var(--bone-2);
+  }
+  .calc .label{color:var(--gold)}
+  .calc .num{color:var(--bone);font-weight:500}
+  .calc .answer{
+    margin-top:10px;padding-top:14px;border-top:1px solid var(--rule);
+    font-family:var(--serif);font-size:24px;color:var(--gold);font-weight:600;
+  }
+  .verdict-row{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px;
+  }
+  .vc{
+    background:var(--card);border:1px solid var(--rule);padding:16px 18px;
+    display:flex;flex-direction:column;gap:6px;
+  }
+  .vc.poc{border-color:var(--gold)}
+  .vc.mic{border-color:var(--gold-dim);background:rgba(170,144,104,.1)}
+  .vc.none{opacity:.6}
+  .vc .vc-l{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--gold);text-transform:uppercase}
+  .vc .vc-t{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--bone)}
+  .vc .vc-d{font-size:13px;color:var(--bone-2);line-height:1.5}
+
+  /* ---------- AI vs Math line ---------- */
+  .split-line{
+    display:grid;grid-template-columns:1fr 1fr;gap:1px;margin-top:24px;
+    background:var(--rule-soft);border:1px solid var(--rule-soft);
+  }
+  .split-col{
+    background:var(--noir);padding:clamp(24px,2.6vw,32px);
+    display:flex;flex-direction:column;gap:14px;
+  }
+  .split-col.math{background:var(--card)}
+  .split-col .sc-tag{
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--gold);
+  }
+  .split-col h3{font-size:22px}
+  .split-col ul{list-style:none;display:flex;flex-direction:column;gap:9px}
+  .split-col ul li{
+    font-size:14.5px;color:var(--bone-2);line-height:1.55;padding-left:18px;position:relative;
+  }
+  .split-col ul li::before{
+    content:'';position:absolute;left:0;top:9px;
+    width:6px;height:6px;background:var(--gold);transform:rotate(45deg);
+  }
+  .split-col ul li b{color:var(--bone)}
+
+  /* AI never-list */
+  .never{
+    margin-top:24px;display:flex;gap:14px;align-items:flex-start;
+    padding:18px 20px;background:#1a1210;border:1px solid var(--alert);
+  }
+  .never .n-ico{color:var(--alert);flex:none;margin-top:2px}
+  .never .n-tx{font-size:14.5px;color:var(--bone-2);line-height:1.6}
+  .never .n-tx b{color:var(--bone);font-weight:700}
+
+  /* ---------- attacks ---------- */
+  .atk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px}
+  .atk{background:var(--card);border:1px solid var(--rule-soft);display:flex;flex-direction:column}
+  .atk .a-head{display:flex;align-items:center;gap:10px;padding:16px 18px 14px;border-bottom:1px solid var(--rule-soft)}
+  .atk .a-ico{color:var(--alert);flex:none}
+  .atk .a-name{font-family:var(--serif);font-weight:600;font-size:22px;color:var(--bone)}
+  .atk .a-num{font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:auto}
+  .atk .a-do{padding:16px 18px;font-size:14px;color:var(--bone-2);line-height:1.55;flex:1}
+  .atk .a-do b{color:var(--bone)}
+  .atk .a-rej{margin:0 18px 16px;display:flex;gap:9px;align-items:flex-start;padding:12px 13px;background:#1a1210;border-left:2px solid var(--alert)}
+  .atk .a-rej .rx{color:var(--alert);flex:none}
+  .atk .a-rej .rt{font-family:var(--mono);font-size:11px;line-height:1.5;color:var(--alert);letter-spacing:.04em}
+  .atk-foot{
+    margin-top:22px;display:flex;gap:14px;align-items:flex-start;
+    padding:18px 20px;background:var(--elevated);border-left:3px solid var(--gold);
+    font-size:clamp(15px,1.55vw,17px);color:var(--bone-2);line-height:1.55;
+  }
+  .atk-foot .af-ico{color:var(--gold);flex:none;margin-top:1px}
+  .atk-foot b{color:var(--bone)}
+
+  /* ---------- workflow picture ---------- */
+  .wf{margin-top:18px;display:flex;flex-direction:column;gap:14px}
+  .wf-room{
+    background:var(--card);border:1px solid var(--rule);
+    padding:20px 24px;display:flex;flex-direction:column;gap:10px;
+  }
+  .wf-room.purchaser{border-color:var(--gold)}
+  .wf-room .wf-hd{display:flex;align-items:center;gap:12px}
+  .wf-room .wf-num{
+    font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+    color:var(--gold);text-transform:uppercase;
+  }
+  .wf-room h3{font-size:21px}
+  .wf-room .wf-flow{
+    font-family:var(--mono);font-size:13px;color:var(--bone-2);line-height:1.75;
+    background:var(--noir);padding:14px 18px;border:1px dashed var(--rule-soft);
+  }
+  .wf-room .wf-flow .step-tag{color:var(--gold)}
+  .wf-room .wf-flow .arrow{color:var(--gold);margin:0 4px}
+  .wf-room .wf-note{font-size:13.5px;color:var(--caption);line-height:1.55;font-style:italic}
+  .wf-arrow{
+    text-align:center;color:var(--gold);font-family:var(--mono);font-size:18px;
+  }
+
+  /* ---------- closing ---------- */
+  .closing-slide{justify-content:center}
+  .closing-slide .cl-big{
+    font-family:var(--serif);font-weight:600;font-size:clamp(36px,5vw,60px);
+    line-height:1.12;color:var(--bone);max-width:22ch;
+  }
+  .closing-slide .cl-big .g{color:var(--gold);font-style:italic}
+  .closing-slide .cl-sub{
+    margin-top:32px;font-size:clamp(18px,1.95vw,22px);color:var(--bone-2);
+    line-height:1.55;max-width:54ch;font-weight:300;
+  }
+  .closing-slide .cl-mantra{
+    margin-top:48px;padding:24px 28px;border-left:3px solid var(--gold);
+    background:var(--elevated);
+    font-family:var(--serif);font-style:italic;font-size:clamp(20px,2.2vw,26px);
+    color:var(--bone);line-height:1.4;max-width:55ch;
+  }
+  .closing-slide .cl-meta{
+    margin-top:48px;display:flex;align-items:center;gap:12px;
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;
+    color:var(--muted);text-transform:uppercase;
+  }
+  .closing-slide .cl-meta .dot{width:9px;height:9px;background:var(--gold);transform:rotate(45deg);flex:none}
+
+  /* ---------- small screens ---------- */
+  @media (max-width:900px){
+    .slide{padding:32px 24px}
+    .concept-grid,.stat-row,.q-block,.verdict-row,.atk-grid,.split-line{grid-template-columns:1fr}
+    .chain-tiers{grid-template-columns:1fr;gap:8px}
+    .chain-arrow{transform:rotate(90deg)}
+    .step{grid-template-columns:48px 1fr;gap:14px}
+    .step .s-p{grid-column:1/-1}
+  }
+
+  /* worked example */
+  .ex-scene{
+    margin-top:18px;padding:16px 20px;background:var(--elevated);
+    border-left:3px solid var(--gold);font-size:clamp(14px,1.5vw,16.5px);
+    color:var(--bone-2);line-height:1.55;
+  }
+  .ex-scene b{color:var(--bone);font-weight:600}
+  .example-stack{display:flex;flex-direction:column;gap:11px;margin-top:18px}
+  .ex-row{
+    display:grid;grid-template-columns:100px 1fr;gap:20px;align-items:stretch;
+    background:var(--card);border:1px solid var(--rule);padding:16px 20px;
+  }
+  .ex-tag{
+    display:flex;flex-direction:column;justify-content:center;gap:5px;
+    border-right:1px solid var(--rule-soft);padding-right:18px;
+  }
+  .ex-num{font-family:var(--disp);font-weight:600;font-size:30px;color:var(--gold);line-height:1}
+  .ex-name{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--caption)}
+  .ex-body{display:flex;flex-direction:column;gap:9px}
+  .ex-flow{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+  .ex-doc{
+    background:var(--noir);border:1px solid var(--rule-soft);padding:9px 13px;
+    font-family:var(--mono);font-size:12px;color:var(--bone-2);line-height:1.5;
+    flex:1;min-width:180px;
+  }
+  .ex-doc b{color:var(--bone)}
+  .ex-arrow{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;
+    color:var(--gold);text-transform:uppercase;flex:none;
+  }
+  .ex-hash{
+    background:var(--elevated);border:1px solid var(--gold-dim);padding:9px 13px;
+    font-family:var(--mono);font-size:11.5px;color:var(--gold);line-height:1.5;
+    flex:1;min-width:180px;word-break:break-all;
+  }
+  .ex-hash.sig{color:var(--pass);border-color:var(--pass)}
+  .ex-note{font-size:13px;color:var(--caption);line-height:1.55}
+  .ex-note b{color:var(--bone)}
+  .ex-note .gold{color:var(--gold)}
+  .ex-2col{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .ex-priv,.ex-pub{
+    background:var(--noir);border:1px solid;padding:11px 13px;
+    font-size:13px;line-height:1.5;color:var(--bone-2);
+    display:flex;gap:10px;align-items:flex-start;
+  }
+  .ex-priv{border-color:var(--alert)}
+  .ex-priv .ex-ico{color:var(--alert);flex:none;margin-top:2px}
+  .ex-pub{border-color:var(--pass)}
+  .ex-pub .ex-ico{color:var(--pass);flex:none;margin-top:2px}
+  .ex-priv b,.ex-pub b{color:var(--bone)}
+  .ex-key-bytes{font-family:var(--mono);font-size:11px;color:var(--gold);word-break:break-all;display:block;margin-top:3px}
+
+  /* hint */
+  .hint{
+    position:fixed;top:14px;right:18px;z-index:10;
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;
+    color:var(--muted);text-transform:uppercase;
+    background:var(--card);border:1px solid var(--rule-soft);padding:6px 11px;
+  }
+  .hint kbd{color:var(--gold);font-family:var(--mono)}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-soft" viewBox="0 0 24 24"><polyline points="9 8 4 12 9 16"/><polyline points="15 8 20 12 15 16"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.4"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><rect x="2.6" y="9" width="11" height="6" rx="3"/><rect x="10.4" y="9" width="11" height="6" rx="3"/></symbol>
+  <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 3 L20 7.4 V16.6 L12 21 L4 16.6 V7.4 Z"/><path d="M4 7.4 L12 11.9 L20 7.4"/><line x1="12" y1="11.9" x2="12" y2="21"/></symbol>
+  <symbol id="i-team" viewBox="0 0 24 24"><circle cx="7" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><circle cx="12" cy="16" r="3"/></symbol>
+  <symbol id="i-docchk" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18"/><polyline points="8.6 12 11 14.4 15.4 9"/></symbol>
+  <symbol id="i-stamp" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18"/><line x1="8.6" y1="8" x2="15.4" y2="8"/><line x1="8.6" y1="11.4" x2="15.4" y2="11.4"/><path d="M8.6 16 q1.8 -2.4 3.4 0 t3.4 0"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.4"/><line x1="15.6" y1="15.6" x2="20.4" y2="20.4"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2.6 L19.6 5.6 V11 C19.6 15.8 16.3 19.3 12 21.4 C7.7 19.3 4.4 15.8 4.4 11 V5.6 Z"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.6 L21.4 19.8 H2.6 Z"/><line x1="12" y1="10" x2="12" y2="14.4"/><line x1="12" y1="17" x2="12" y2="17.2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><polyline points="4 12.6 9.4 18 20 6.4"/></symbol>
+  <symbol id="i-cross" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="12" r="4"/><line x1="12" y1="12" x2="21" y2="12"/><line x1="18" y1="12" x2="18" y2="16"/><line x1="21" y1="12" x2="21" y2="15"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11 V8 a4 4 0 0 1 8 0 V11"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12 S5 5 12 5 22 12 22 12 19 19 12 19 2 12 2 12 Z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-fp" viewBox="0 0 24 24"><path d="M12 3 a8 8 0 0 0 -8 8 v4"/><path d="M12 6 a5 5 0 0 0 -5 5 v6"/><path d="M12 9 a2 2 0 0 0 -2 2 v8"/><path d="M14 17 v3"/><path d="M17 13 v4"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3 H14 L19 8 V21 H6 Z"/><polyline points="14 3 14 8 19 8"/></symbol>
+  <symbol id="i-tree" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="14" r="2"/><circle cx="12" cy="14" r="2"/><circle cx="19" cy="14" r="2"/><circle cx="12" cy="21" r="2"/><line x1="12" y1="7" x2="5" y2="12"/><line x1="12" y1="7" x2="12" y2="12"/><line x1="12" y1="7" x2="19" y2="12"/><line x1="5" y1="16" x2="12" y2="19"/><line x1="12" y1="16" x2="12" y2="19"/><line x1="19" y1="16" x2="12" y2="19"/></symbol>
+  <symbol id="i-calc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1"/><rect x="8" y="6" width="8" height="3"/><circle cx="9" cy="13" r=".7"/><circle cx="12" cy="13" r=".7"/><circle cx="15" cy="13" r=".7"/><circle cx="9" cy="16.5" r=".7"/><circle cx="12" cy="16.5" r=".7"/><circle cx="15" cy="16.5" r=".7"/></symbol>
+  <symbol id="i-bot" viewBox="0 0 24 24"><rect x="5" y="8" width="14" height="11" rx="2"/><line x1="12" y1="3" x2="12" y2="8"/><circle cx="9" cy="13" r="1"/><circle cx="15" cy="13" r="1"/><line x1="9" y1="17" x2="15" y2="17"/></symbol>
+</defs></svg>
+
+<div class="progress"><div class="progress-bar" id="pbar"></div></div>
+<div class="hint">Navigate · <kbd>← →</kbd> · <kbd>Space</kbd> · <kbd>Home</kbd> · <kbd>End</kbd></div>
+
+<div class="deck">
+<div class="slides">
+
+  <!-- ===== Slide 1 · Title ===== -->
+  <section class="slide title-slide active">
+    <div class="slide-inner ts-inner">
+      <div class="title-tag"><span class="dot"></span><span>TrueNorth · How it works · Plain-English deck</span></div>
+      <h1>How we prove a drone is <span class="g">actually Canadian</span> — without trusting anybody.</h1>
+      <p class="ts-sub">A non-technical walk-through of <b>cryptographic provenance</b>: what the words "private key" and "fingerprint" mean, how the whole workflow runs end-to-end, and where AI helps versus where only math is allowed.</p>
+      <div class="ts-meta">
+        <span><span class="key">For</span> &nbsp; Teammates · Judges · Procurement</span>
+        <span><span class="key">Read time</span> &nbsp; 8 min</span>
+        <span><span class="key">Companion doc</span> &nbsp; how-it-works-en.md</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Slide 2 · Problem ===== -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <span class="snum">02</span>
+        <div class="sh-tx">
+          <div class="kicker">The problem</div>
+          <h2>"Made in Canada" relies on <span class="g">the supplier saying so.</span></h2>
+        </div>
+      </div>
+      <p class="lead">The Buy Canadian Policy gives Canadian-made goods preference in defence procurement. But today, the labels — Made in Canada / Product of Canada — depend on <b>supplier self-reporting</b>. By the time a drone reaches the Canadian Armed Forces, its parts have passed through five companies, three countries, and four accounting systems. Nobody can reconstruct it.</p>
+      <div class="stat-row">
+        <div class="stat"><div class="sn">98%</div><div class="sl">Of direct costs must be Canadian for "Product of Canada"</div></div>
+        <div class="stat"><div class="sn">51%</div><div class="sl">Of direct costs must be Canadian for "Made in Canada"</div></div>
+        <div class="stat"><div class="sn">0</div><div class="sl">Independent ways to actually check, today</div></div>
+      </div>
+      <h3 style="margin-top:36px;color:var(--gold)">The three questions our system answers</h3>
+      <div class="q-block">
+        <div class="q-card"><span class="q-n">Question 1</span><span class="q-t">Does this product qualify as Made in Canada or Product of Canada?</span></div>
+        <div class="q-card"><span class="q-n">Question 2</span><span class="q-t">What percentage of its value is genuinely Canadian?</span></div>
+        <div class="q-card"><span class="q-n">Question 3</span><span class="q-t">Can the record be independently verified, end to end?</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Slide 3 · Three building blocks intro ===== -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <span class="snum">03</span>
+        <div class="sh-tx">
+          <div class="kicker">The building blocks</div>
+          <h2>Three ideas. Everything else is built <span class="g">from these.</span></h2>
+        </div>
+      </div>
+      <p class="lead">If you understand the next three slides, you understand the whole system. No more jargon required.</p>
+      <div class="q-block" style="margin-top:36px">
+        <div class="q-card" style="border-color:var(--gold-dim)">
+          <span class="q-n">Block 1</span>
+          <svg class="ico ico-lg" style="color:var(--gold)"><use href="#i-fp"/></svg>
+          <span class="q-t">The fingerprint</span>
+          <p style="font-size:14px">A way to turn any document into a 64-character tag. Change one comma, the tag changes completely.</p>
+        </div>
+        <div class="q-card" style="border-color:var(--gold-dim)">
+          <span class="q-n">Block 2</span>
+          <svg class="ico ico-lg" style="color:var(--gold)"><use href="#i-key"/></svg>
+          <span class="q-t">The personal seal</span>
+          <p style="font-size:14px">A private stamp only you have, and a public photo of the stamp anyone can use to verify it. (Public + private key.)</p>
+        </div>
+        <div class="q-card" style="border-color:var(--gold-dim)">
+          <span class="q-n">Block 3</span>
+          <svg class="ico ico-lg" style="color:var(--gold)"><use href="#i-stamp"/></svg>
+          <span class="q-t">The signed claim</span>
+          <p style="font-size:14px">A small structured record describing one supplier's work, sealed with their private key. (An "attestation.")</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Slide 4 · Fingerprint ===== -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <span class="snum">04</span>
+        <div class="sh-tx">
+          <div class="kicker">Building block 1 · the fingerprint</div>
+          <h2>Any document → <span class="g">a short tag.</span> Change one comma → different tag.</h2>
+        </div>
+      </div>
+      <div class="concept-grid">
+        <div class="concept-vis">
+          <div class="fp-demo">
+            <div class="fp-line">
+              <div class="fp-doc"><b>Document A:</b> "Apex made 1 airframe, cost <b>$412</b>"</div>
+              <span class="fp-arrow">→</span>
+              <div class="fp-hash">sha256:9c1f8b2e…e3a7</div>
+            </div>
+            <div class="fp-note">— change one digit —</div>
+            <div class="fp-line">
+              <div class="fp-doc"><b>Document A':</b> "Apex made 1 airframe, cost <b>$413</b>"</div>
+              <span class="fp-arrow">→</span>
+              <div class="fp-hash">sha256:71d440aa…22c1</div>
+            </div>
+          </div>
+        </div>
+        <div class="concept-text">
+          <p>A fingerprinting machine (formally: a <b>hash function</b>) takes any document, of any size, and returns a short tag like <span class="gold">sha256:9c1f…e3a7</span>.</p>
+          <div class="props">
+            <div class="prop"><span class="p-mk">01</span><span class="p-tx"><b>Same document → same tag.</b> Every computer in the world agrees on the result.</span></div>
+            <div class="prop"><span class="p-mk">02</span><span class="p-tx"><b>One byte different → completely different tag.</b> Tampering is instantly visible.</span></div>
+            <div class="prop"><span class="p-mk">03</span><span class="p-tx"><b>You can't run it backwards.</b> The tag reveals nothing about the original document.</span></div>
+            <div class="prop"><span class="p-mk">04</span><span class="p-tx"><b>The tag is the document's identity.</b> If we sign the tag, we've effectively signed the document.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Slide 5 · Public/Private key ===== -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <span class="snum">05</span>
+        <div class="sh-tx">
+          <div class="kicker">Building block 2 · the personal seal</div>
+          <h2>The private stamp you keep. The public photo <span class="g">anyone can use to check it.</span></h2>
+        </div>
+      </div>
+      <div class="concept-grid">
+        <div class="concept-vis">
+          <div class="key-demo">
+            <div class="key-card priv">
+              <div class="k-ico"><svg class="ico ico-lg"><use href="#i-lock"/></svg></div>
+              <div class="k-tx">
+                <div class="k-name">Private key</div>
+                <div class="k-desc">The physical stamp. Locked in a safe — or, for serious suppliers, on a hardware device nobody can copy. <b>Only the supplier can press it.</b></div>
+              </div>
+            </div>
+            <div class="key-arrow">— mathematically paired —</div>
+            <div class="key-card pub">
+              <div class="k-ico"><svg class="ico ico-lg"><use href="#i-eye"/></svg></div>
+              <div class="k-tx">
+                <div class="k-name">Public key</div>
+                <div class="k-desc">A photograph of what the seal looks like. Published openly. <b>Anyone in the world holds a copy</b> and can use it to check.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="concept-text">
+          <p>Each supplier holds a mathematically-paired key. The <span class="alert-c">private</span> half they keep. The <span class="pass-c">public</span> half they publish.</p>
+          <div class="props">
+            <div class="prop"><span class="p-mk">01</span><span class="p-tx"><b>Signing.</b> The supplier presses their private stamp on a document's fingerprint. The result is a "signature" — proof <i>this exact document</i> was sealed by <i>this exact stamp</i>.</span></div>
+            <div class="prop"><span class="p-mk">02</span><span class="p-tx"><b>Verifying.</b> Anyone with the public photograph can confirm the signature is real — without ever holding the private stamp.</span></div>
+            <div class="prop"><span class="p-mk">03</span><span class="p-tx"><b>The headline guarantee.</b> You can prove the supplier signed it <b>without ever seeing their private key</b>. Tampering and forgery are mathematically detectable.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Slide 6 · Signed claim ===== -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <span class="snum">06</span>
+        <div class="sh-tx">
+          <div class="kicker">Building block 3 · the signed claim</div>
+          <h2>One supplier contribution = one <span class="g">attestation.</span></h2>
+        </div>
+      </div>
+      <div class="concept-grid">
+        <div class="concept-vis">
+          <div class="att-demo">
+            <span class="att-label">Apex Machining — Attestation</span>
+            <div><span class="k">issuer:</span> <span class="v">"Apex Machining, Mississauga ON"</span></div>
+            <div><span class="k">activity:</span> <span class="v">"machine drone airframe"</span></div>
+            <div><span class="k">inputs:</span> <span class="v">[sha256:b2c4…91]</span></div>
+            <div><span class="k">labour_CA:</span> <span class="v">$412.00</span></div>
+            <div><span class="k">materials_CA:</span> <span class="v">$38.50</span></div>
+            <div><span class="k">labour_foreign:</span> <span class="v">$0.00</span></div>
+            <div><span class="k">location:</span> <span class="v">"Mississauga, ON, Canada"</span></div>
+            <div><span class="k">timestamp:</span> <span class="v">"2026-05-20T14:33Z"</span></div>
+            <div class="stamp">
+              <svg class="ico ico-sm"><use href="#i-check"/></svg>
+              signed: Ed25519 · Apex private key · base64…
+            </div>
+          </div>
+        </div>
+        <div class="concept-text">
+          <p>An <b>attestation</b> is one small structured record — a few lines of text — describing one supplier's contribution. Same shape every time, so a computer can read it.</p>
+          <div class="props">
+            <div class="prop"><span class="p-mk">→</span><span class="p-tx"><b>Who did the work</b> (the issuer, with a verified identity)</span></div>
+            <div class="prop"><span class="p-mk">→</span><span class="p-tx"><b>What they did</b> (extract, manufacture, assemble, integrate…)</span></div>
+            <div class="prop"><span class="p-mk">→</span><span class="p-tx"><b>What they consumed</b> (fingerprints of upstream attestations — the links in the chain)</span></div>
+            <div class="prop"><span class="p-mk">→</span><span class="p-tx"><b>What it cost, where</b> (Canadian labour, foreign labour, Canadian materials, foreign materials)</span></div>
+            <div class="prop"><span class="p-mk">→</span><span class="p-tx"><b>Where it happened</b> (the audited facility)</span></div>
+            <div class="prop"><span class="p-mk">→</span><span class="p-tx"><b>A signature</b> proving the supplier authored it</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Slide 7 · Worked example · all three blocks together ===== -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <span class="snum">07</span>
+        <div class="sh-tx">
+          <div class="kicker">All three blocks together · worked example</div>
+          <h2>Apex Machining · 20 May 2026 · <span class="g">14:33 in Mississauga.</span></h2>
+        </div>
+      </div>
+      <div class="ex-scene">
+        <b>Scene:</b> Sarah at Apex Machining just finished CNC-milling one drone airframe from Rio Tinto's 6061 aluminum billet. The job cost <b>$412 in Canadian labour, $38.50 in Canadian materials.</b> Her YubiKey is plugged in. She's about to sign — let's watch all three blocks at work.
+      </div>
+      <div class="example-stack">
+
+        <div class="ex-row">
+          <div class="ex-tag"><span class="ex-num">B1</span><span class="ex-name">Fingerprint</span></div>
+          <div class="ex-body">
+            <div class="ex-flow">
+              <div class="ex-doc"><b>statement text:</b><br/>{ "labour_CA": 412.00, "materials_CA": 38.50, "location": "ON, CA", … }</div>
+              <span class="ex-arrow">→ SHA-256 →</span>
+              <div class="ex-hash">sha256:9c1f8b2e4a73d5e6…e6d9</div>
+            </div>
+            <div class="ex-note">If she'd typed <b>$4120</b> instead of <b>$412</b>, the tag would be <span class="gold">sha256:71d440aa8e23c5f9…</span> — totally different. There's no "small change → small change" here.</div>
+          </div>
+        </div>
+
+        <div class="ex-row">
+          <div class="ex-tag"><span class="ex-num">B2</span><span class="ex-name">Keys</span></div>
+          <div class="ex-body">
+            <div class="ex-2col">
+              <div class="ex-priv">
+                <svg class="ico ico-sm ex-ico"><use href="#i-lock"/></svg>
+                <div><b>Private key</b> · sealed inside the YubiKey. Cannot be exported — not even by Sarah. The chip signs on request, but never reveals the key itself.</div>
+              </div>
+              <div class="ex-pub">
+                <svg class="ico ico-sm ex-ico"><use href="#i-eye"/></svg>
+                <div><b>Public key</b> · published in the accreditation registry the day Apex was approved.<span class="ex-key-bytes">MCowBQYDK2VwAyEA9c1f8b2e4a73…</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ex-row">
+          <div class="ex-tag"><span class="ex-num">B3</span><span class="ex-name">Signed claim</span></div>
+          <div class="ex-body">
+            <div class="ex-flow">
+              <div class="ex-doc">fingerprint: <b>9c1f8b2e…e6d9</b></div>
+              <span class="ex-arrow">→ YubiKey signs (Sarah taps) →</span>
+              <div class="ex-hash sig">signature: RZ3kP2nL8fX4mQwR…eP=</div>
+            </div>
+            <div class="ex-note">Bundle that goes out: <b>{ statement, signature, keyId: "apex-machining-ca" }</b>. <b>Private key never left the YubiKey.</b></div>
+          </div>
+        </div>
+
+      </div>
+      <div class="atk-foot" style="margin-top:20px">
+        <svg class="ico ico-md af-ico"><use href="#i-check"/></svg>
+        <span>Three weeks later, a procurement officer in Ottawa verifies it: looks up Apex's public key, re-computes the fingerprint, checks the signature → <b>all match</b>. If anyone tampered with the stored text, the re-computed fingerprint changes, the signature no longer verifies, and the attestation is rejected as SIGNATURE_INVALID.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Slide 8 · How a supplier signs ===== -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <span class="snum">08</span>
+        <div class="sh-tx">
+          <div class="kicker">The workflow · part 1</div>
+          <h2>How one supplier <span class="g">creates a signed claim.</span></h2>
+        </div>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <span class="s-n">1</span>
+          <span class="s-w">Supplier fills in the claim</span>
+          <span class="s-p">Either by typing JSON, or — much more likely — typing plain English like "<b>we milled 50 airframes, 3 machinists × 6 hrs at $42/hr</b>". An <b>AI assistant</b> drafts the structured attestation from the plain-English input.</span>
+        </div>
+        <div class="step">
+          <span class="s-n">2</span>
+          <span class="s-w">Supplier reviews and edits</span>
+          <span class="s-p">The human checks every field — costs, location, inputs. <b>This is the accountability step.</b> The AI proposed; the human disposes.</span>
+        </div>
+        <div class="step">
+          <span class="s-n">3</span>
+          <span class="s-w">The claim's fingerprint is computed</span>
+          <span class="s-p">The clean structured text gets hashed → <span class="gold">sha256:9c1f…e3a7</span>. A 64-character identity.</span>
+        </div>
+        <div class="step">
+          <span class="s-n">4</span>
+          <span class="s-w">Hardware signs the fingerprint</span>
+          <span class="s-p">The supplier presses their <b>private key</b> (on a YubiKey or HSM) onto the fingerprint. Out pops a signature.</span>
+        </div>
+        <div class="step">
+          <span class="s-n">5</span>
+          <span class="s-w">Claim + signature → sent out</span>
+          <span class="s-p">The signed attestation joins the chain. The supplier's private key <b>never leaves their device</b>.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Slide 9 · How anyone verifies ===== -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <span class="snum">09</span>
+        <div class="sh-tx">
+          <div class="kicker">The workflow · part 2</div>
+          <h2>How anyone — <span class="g">without permission</span> — verifies it.</h2>
+        </div>
+      </div>
+      <p class="lead">The verifier could be a procurement officer, an auditor, a journalist, or a rival supplier. They don't ask anyone's permission. They just check the math.</p>
+      <div class="steps" style="margin-top:18px">
+        <div class="step">
+          <span class="s-n">1</span>
+          <span class="s-w">Look up the supplier's public key</span>
+          <span class="s-p">From the official <b>registry of accredited Canadian suppliers</b>. If the supplier isn't on it → reject immediately as <span class="alert-c">UNKNOWN_ISSUER</span>.</span>
+        </div>
+        <div class="step">
+          <span class="s-n">2</span>
+          <span class="s-w">Re-compute the claim's fingerprint</span>
+          <span class="s-p">Take the claim text, hash it again. Should match the fingerprint that was originally signed.</span>
+        </div>
+        <div class="step">
+          <span class="s-n">3</span>
+          <span class="s-w">Check the signature</span>
+          <span class="s-p">Math says either: yes, the holder of the matching private key produced this signature — or no, they didn't. No grey zone. Failure → <span class="alert-c">SIGNATURE_INVALID</span>.</span>
+        </div>
+        <div class="step">
+          <span class="s-n">4</span>
+          <span class="s-w">Check structural integrity</span>
+          <span class="s-p">No replayed attestations, no broken links to upstream, no cycles, no duplicate IDs. Every check has a named failure reason.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Slide 10 · Linking into a chain ===== -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <span class="snum">10</span>
+        <div class="sh-tx">
+          <div class="kicker">The workflow · part 3</div>
+          <h2>Many claims, linked by fingerprint, form <span class="g">an unforgeable chain.</span></h2>
+        </div>
+      </div>
+      <div class="chain">
+        <div class="chain-tiers">
+          <div class="chain-col">
+            <div class="tlabel">Tier 2 · raw &amp; parts</div>
+            <div class="chain-node ca"><span class="cn-name">Rio Tinto · Aluminum billet</span><span class="cn-meta">Saguenay, QC · signed</span></div>
+            <div class="chain-node ca"><span class="cn-name">Damocles · Battery cells</span><span class="cn-meta">Calgary, AB · signed</span></div>
+            <div class="chain-node"><span class="cn-name">T-Motor · Motors</span><span class="cn-meta">Imported · signed</span></div>
+          </div>
+          <span class="chain-arrow">→</span>
+          <div class="chain-col">
+            <div class="tlabel">Tier 1 · subassemblies</div>
+            <div class="chain-node ca"><span class="cn-name">Apex Machining · Airframe</span><span class="cn-meta">references billet by hash</span></div>
+            <div class="chain-node ca"><span class="cn-name">Mosaic Avionics · Flight ctrlr</span><span class="cn-meta">Ottawa, ON · signed</span></div>
+          </div>
+          <span class="chain-arrow">→</span>
+          <div class="chain-col">
+            <div class="tlabel">Tier 0 · finished</div>
+            <div class="chain-final">
+              <span class="cf-name">RAVEN-7C drone</span>
+              <span class="cf-pct">78.9%</span>
+              <span class="cf-l">Canadian content</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="chain-cap">Each supplier signs <b>their</b> attestation, and includes the <b>fingerprints</b> of the upstream attestations they consumed. Change any node → its fingerprint changes → every downstream link now points to nothing. <b>No silent edits possible. No blockchain required.</b></p>
+    </div>
+  </section>
+
+  <!-- ===== Slide 11 · Computing the percentage ===== -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <span class="snum">11</span>
+        <div class="sh-tx">
+          <div class="kicker">The workflow · part 4</div>
+          <h2>The math: walk the tree, sum the costs, <span class="g">apply the law.</span></h2>
+        </div>
+      </div>
+      <div class="pct-block">
+        <div class="calc">
+          <div><span class="label">Total cost of the drone (all stages summed)</span> &nbsp; = &nbsp; <span class="num">$1,797.60</span></div>
+          <div><span class="label">Canadian portion (all stages summed)</span> &nbsp; = &nbsp; <span class="num">$1,418.60</span></div>
+          <div class="answer">Canadian content = 1418.60 / 1797.60 × 100 = 78.9%</div>
+        </div>
+        <div class="verdict-row">
+          <div class="vc none">
+            <span class="vc-l">If &lt; 51%</span>
+            <span class="vc-t">Neither label</span>
+            <span class="vc-d">Doesn't qualify under Canadian law.</span>
+          </div>
+          <div class="vc mic">
+            <span class="vc-l">If ≥ 51% &amp; final assembly in Canada</span>
+            <span class="vc-t">Made in Canada</span>
+            <span class="vc-d">Our drone: 78.9% ≥ 51% ✓ &nbsp; assembled in Ottawa ✓</span>
+          </div>
+          <div class="vc poc">
+            <span class="vc-l">If ≥ 98% &amp; final assembly in Canada</span>
+            <span class="vc-t">Product of Canada</span>
+            <span class="vc-d">Our drone: 78.9% &lt; 98% ✗ — held down by foreign motors.</span>
+          </div>
+        </div>
+        <div class="atk-foot" style="margin-top:24px">
+          <svg class="ico ico-md af-ico"><use href="#i-calc"/></svg>
+          <span>This computation is <b>pure arithmetic</b> — same input, same answer, every time. Reproducible by any third party. <b>No AI ever touches this path.</b></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Slide 12 · AI vs Math line ===== -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <span class="snum">12</span>
+        <div class="sh-tx">
+          <div class="kicker">Where AI goes — and where it doesn't</div>
+          <h2>Cryptography for integrity. <span class="g">AI for plausibility.</span></h2>
+        </div>
+      </div>
+      <div class="split-line">
+        <div class="split-col math">
+          <span class="sc-tag">Fixed math — no AI</span>
+          <h3>The verdict path</h3>
+          <ul>
+            <li><b>Signing</b> attestations (hardware + human)</li>
+            <li><b>Verifying</b> signatures and fingerprints</li>
+            <li><b>Checking</b> the registry of accredited suppliers</li>
+            <li><b>Walking the tree</b> and summing costs</li>
+            <li><b>Computing</b> the percentage</li>
+            <li><b>Applying</b> the 98% / 51% legal thresholds</li>
+          </ul>
+        </div>
+        <div class="split-col">
+          <span class="sc-tag">AI helper — advisory only</span>
+          <h3>Beside the path</h3>
+          <ul>
+            <li><b>Drafting</b> attestations from plain English / invoices</li>
+            <li><b>Flagging anomalies</b> (labour cost 5× the regional norm)</li>
+            <li><b>Reconciling</b> declared inputs vs. shipping manifests</li>
+            <li><b>Answering questions</b> ("which drones have foreign motors?")</li>
+            <li><b>Spotting wash rings</b> across the supplier graph</li>
+          </ul>
+        </div>
+      </div>
+      <div class="never">
+        <svg class="ico ico-md n-ico"><use href="#i-cross"/></svg>
+        <div class="n-tx"><b>Four things AI never does:</b> sign attestations · compute the legal verdict · be the source of truth for any factual claim · participate in the cryptographic verification path.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Slide 13 · Three attacks ===== -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <span class="snum">13</span>
+        <div class="sh-tx">
+          <div class="kicker">The demo · live attacks on stage</div>
+          <h2>Three ways to cheat. <span class="g">Three rejections.</span></h2>
+        </div>
+      </div>
+      <div class="atk-grid">
+        <div class="atk">
+          <div class="a-head"><svg class="ico ico-sm a-ico"><use href="#i-alert"/></svg><span class="a-name">Tamper</span><span class="a-num">01</span></div>
+          <div class="a-do">Secretly edit the imported chip's cost from <b>$130</b> down to <b>$13</b>, trying to lift the Canadian percentage.</div>
+          <div class="a-rej"><svg class="ico ico-sm rx"><use href="#i-cross"/></svg><span class="rt">SIGNATURE_INVALID — fingerprint of the edited claim no longer matches the original signature</span></div>
+        </div>
+        <div class="atk">
+          <div class="a-head"><svg class="ico ico-sm a-ico"><use href="#i-alert"/></svg><span class="a-name">Forge</span><span class="a-num">02</span></div>
+          <div class="a-do">Invent a fake "Canadian" supplier and sign a fake attestation with a key you generated yourself.</div>
+          <div class="a-rej"><svg class="ico ico-sm rx"><use href="#i-cross"/></svg><span class="rt">UNKNOWN_ISSUER — your public key isn't on the accreditation registry</span></div>
+        </div>
+        <div class="atk">
+          <div class="a-head"><svg class="ico ico-sm a-ico"><use href="#i-alert"/></svg><span class="a-name">Replay</span><span class="a-num">03</span></div>
+          <div class="a-do">Paste a real, validly-signed attestation from another product onto this product's chain.</div>
+          <div class="a-rej"><svg class="ico ico-sm rx"><use href="#i-cross"/></svg><span class="rt">REPLAY_DETECTED — product ID inside the signed bytes doesn't match this product</span></div>
+        </div>
+      </div>
+      <div class="atk-foot">
+        <svg class="ico ico-md af-ico"><use href="#i-shield"/></svg>
+        <span>Three attacks, three rejections, and <b>the Canadian-content percentage never moves</b> — because the math only runs on attestations that pass every check. This is the highest-scoring 45 seconds of the whole demo.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Slide 14 · Whole workflow picture ===== -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <span class="snum">14</span>
+        <div class="sh-tx">
+          <div class="kicker">The whole thing, in one picture</div>
+          <h2>Three rooms. <span class="g">One spine of cryptographic math.</span></h2>
+        </div>
+      </div>
+      <div class="wf">
+        <div class="wf-room">
+          <div class="wf-hd"><span class="wf-num">Room 1</span><h3>Supplier room</h3></div>
+          <div class="wf-flow">
+            <span class="step-tag">[plain English]</span><span class="arrow">→</span> <span class="step-tag">[AI drafts JSON]</span> <span class="arrow">→</span> <span class="step-tag">[human reviews]</span> <span class="arrow">→</span> <span class="step-tag">[hardware signs]</span> <span class="arrow">→</span> <span class="step-tag">[signed attestation]</span>
+          </div>
+          <div class="wf-note">AI accelerates authoring. The human signs.</div>
+        </div>
+        <div class="wf-arrow">↓ &nbsp; linked into the chain by fingerprint &nbsp; ↓</div>
+        <div class="wf-room purchaser">
+          <div class="wf-hd"><span class="wf-num">Room 2 · the focus</span><h3>Purchaser / verifier room</h3></div>
+          <div class="wf-flow">
+            <span class="step-tag">[fetch chain]</span><span class="arrow">→</span> <span class="step-tag">[verify every signature]</span> <span class="arrow">→</span> <span class="step-tag">[check the registry]</span> <span class="arrow">→</span> <span class="step-tag">[walk the tree]</span> <span class="arrow">→</span> <span class="step-tag">[sum + divide]</span> <span class="arrow">→</span> <span class="step-tag">[Made in Canada / Product of Canada / Neither]</span>
+          </div>
+          <div class="wf-note">100% deterministic math. Reproducible by any third party with the same data.</div>
+        </div>
+        <div class="wf-arrow">↓ &nbsp; advisory feedback &nbsp; ↓</div>
+        <div class="wf-room">
+          <div class="wf-hd"><span class="wf-num">Room 3</span><h3>Auditor / red-team room</h3></div>
+          <div class="wf-flow">
+            <span class="step-tag">[AI flags anomalies]</span><span class="arrow">→</span> <span class="step-tag">[human auditor reviews]</span> <span class="arrow">→</span> <span class="step-tag">[disposition]</span>
+          </div>
+          <div class="wf-note">Advisory only — never alters the verdict above.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Slide 15 · Closing ===== -->
+  <section class="slide closing-slide">
+    <div class="slide-inner">
+      <div class="kicker">Why this matters</div>
+      <div class="cl-big">From <span class="g">"trust me"</span> to <span class="g">"check the math."</span></div>
+      <div class="cl-sub">Today, Buy Canadian is enforced by supplier self-reporting. Fraud is easy and deniable. With cryptographic attestations, every claim is independently checkable, every change leaves a trace, every fake supplier is rejected at the gate, and every verdict is reproducible. We don't eliminate fraud — but we make it expensive and traceable instead of cheap and invisible.</div>
+      <div class="cl-mantra">"Cryptography makes the records honest. AI makes the records readable. Together, they make Buy Canadian enforceable."</div>
+      <div class="cl-meta">
+        <span class="dot"></span>
+        <span>TrueNorth · RedTeam DefTech Ottawa · 30 May 2026</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button class="nav-btn" id="prev" aria-label="Previous slide">←</button>
+  <div class="nav-counter"><span class="cur" id="curS">01</span> / <span id="totS">15</span></div>
+  <button class="nav-btn" id="next" aria-label="Next slide">→</button>
+</div>
+
+</div>
+
+<script>
+(function(){
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total = slides.length;
+  let idx = 0;
+
+  const curS  = document.getElementById('curS');
+  const totS  = document.getElementById('totS');
+  const pbar  = document.getElementById('pbar');
+  const next  = document.getElementById('next');
+  const prev  = document.getElementById('prev');
+
+  totS.textContent = String(total).padStart(2,'0');
+
+  function render(){
+    slides.forEach((s,i)=> s.classList.toggle('active', i===idx));
+    curS.textContent = String(idx+1).padStart(2,'0');
+    pbar.style.width = ((idx+1) / total * 100) + '%';
+    if (slides[idx]) slides[idx].scrollTop = 0;
+  }
+
+  function go(d){
+    idx = Math.max(0, Math.min(total-1, idx+d));
+    render();
+  }
+
+  next.addEventListener('click', ()=> go(+1));
+  prev.addEventListener('click', ()=> go(-1));
+
+  document.addEventListener('keydown', (e)=>{
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); go(+1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+    else if (e.key === 'Home') { e.preventDefault(); idx = 0; render(); }
+    else if (e.key === 'End')  { e.preventDefault(); idx = total-1; render(); }
+  });
+
+  // touch support
+  let touchStartX = null;
+  document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, {passive:true});
+  document.addEventListener('touchend', e => {
+    if (touchStartX === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 40) go(dx < 0 ? +1 : -1);
+    touchStartX = null;
+  }, {passive:true});
+
+  render();
+})();
+</script>
+
+</body>
+</html>
