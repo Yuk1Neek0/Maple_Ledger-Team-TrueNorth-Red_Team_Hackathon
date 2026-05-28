@@ -102,7 +102,7 @@ Each layer below has four rows:
 
 **Adopt — do not build**
 - **DSSE** (Dead Simple Signing Envelope) — removes JSON canonicalization entirely; you sign the exact transmitted bytes via PAE.
-- **Ed25519** (RFC 8032) via a vetted library — `@noble/ed25519` (JS/TS) or `PyNaCl` (Python).
+- **Ed25519** (RFC 8032) via a vetted library — `pyca/cryptography` (Python, primary) or `@noble/ed25519` (JS/TS, browser only).
 - **SHA-256** (FIPS 180-4) — for key fingerprints and content addressing.
 - **RFC 8785 JCS** (only if you are NOT using DSSE) — JSON Canonicalization Scheme.
 - **JSON Schema 2020-12** — for `MALFORMED` rejection.
@@ -436,7 +436,7 @@ A consolidated reference. Cite these in the pitch; depending on a real standard 
 | Identity | GCKey | Supplier portal sign-in |
 | Attestation | DSSE | Signing envelope |
 | Attestation | Ed25519 (RFC 8032) | Signature algorithm |
-| Attestation | `@noble/ed25519` / PyNaCl | Vetted Ed25519 library |
+| Attestation | `pyca/cryptography` (Python) / `@noble/ed25519` (browser) | Vetted Ed25519 library |
 | Attestation | SHA-256 (FIPS 180-4) | Content hashing |
 | Attestation | RFC 8785 JCS | Canonical JSON (only if not using DSSE) |
 | Attestation | JSON Schema 2020-12 | Schema validation |
