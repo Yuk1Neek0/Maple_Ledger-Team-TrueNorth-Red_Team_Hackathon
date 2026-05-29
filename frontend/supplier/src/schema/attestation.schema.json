@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Maple Ledger Supplier Attestation (signed payload)",
+  "description": "The signed attestation payload. Keys are canonicalized (recursively sorted, compact) before signing. The 'signature' field is added AFTER signing and is therefore not part of this signed-payload schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "supplier_id",
+    "output",
+    "inputs",
+    "materials_cents",
+    "labour_cents",
+    "work_country",
+    "is_substantial_transformation",
+    "timestamp"
+  ],
+  "properties": {
+    "supplier_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["product_id", "quantity", "unit"],
+      "properties": {
+        "product_id": { "type": "string", "minLength": 1 },
+        "quantity": { "type": "integer", "minimum": 0 },
+        "unit": { "type": "string", "minLength": 1 }
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["attestation_hash", "quantity_used"],
+        "properties": {
+          "attestation_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]+$"
+          },
+          "quantity_used": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "materials_cents": { "type": "integer", "minimum": 0 },
+    "labour_cents": { "type": "integer", "minimum": 0 },
+    "work_country": {
+      "type": "string",
+      "pattern": "^[A-Z]{2}$"
+    },
+    "is_substantial_transformation": { "type": "boolean" },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
