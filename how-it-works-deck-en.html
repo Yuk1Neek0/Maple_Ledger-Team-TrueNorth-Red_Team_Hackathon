@@ -660,7 +660,8 @@
           <div class="props">
             <div class="prop"><span class="p-mk">01</span><span class="p-tx"><b>Signing.</b> The supplier presses their private stamp on a document's fingerprint. The result is a "signature" — proof <i>this exact document</i> was sealed by <i>this exact stamp</i>.</span></div>
             <div class="prop"><span class="p-mk">02</span><span class="p-tx"><b>Verifying.</b> Anyone with the public photograph can confirm the signature is real — without ever holding the private stamp.</span></div>
-            <div class="prop"><span class="p-mk">03</span><span class="p-tx"><b>The headline guarantee.</b> You can prove the supplier signed it <b>without ever seeing their private key</b>. Tampering and forgery are mathematically detectable.</span></div>
+            <div class="prop"><span class="p-mk">03</span><span class="p-tx"><b>Not the same as hashing.</b> Signing is <i>not</i> "hash the document plus the key." Two different keys do two different jobs: <span class="alert-c">private creates</span> the signature, <span class="pass-c">public verifies</span> it. The public key can't forge — only check.</span></div>
+            <div class="prop"><span class="p-mk">04</span><span class="p-tx"><b>The headline guarantee.</b> You can prove the supplier signed it <b>without ever seeing their private key</b>. Tampering and forgery are mathematically detectable.</span></div>
           </div>
         </div>
       </div>

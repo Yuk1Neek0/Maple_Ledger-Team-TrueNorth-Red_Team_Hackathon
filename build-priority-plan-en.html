@@ -4,750 +4,694 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>TrueNorth · Build Priority Plan · Internal Deck</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
 <style>
+  /* ===========================================================
+     PALETTE — exactly three colours.
+       1) paper  (white background)
+       2) ink    (near-black text)
+       3) accent (Canadian red)
+     Every grey is ink at reduced opacity, every tint is the
+     accent at reduced opacity. No fourth hue anywhere.
+     =========================================================== */
   :root{
-    --noir:#000000; --panel:#0A0907; --card:#141310; --elevated:#1E1C18;
-    --bone:#ECE6D5; --bone-2:#D6CFBB; --caption:#A89F88; --muted:#6F6957;
-    --gold:#AA9068; --gold-dim:#8A7656; --rule:#5C4E35; --rule-soft:#241F18;
-    --pass:#5BD68A; --alert:#D9544D;
-    --sans:'Manrope',system-ui,sans-serif;
-    --serif:'Cormorant Garamond',Georgia,serif;
-    --disp:'Cormorant Garamond',Georgia,serif;
-    --mono:'IBM Plex Mono',ui-monospace,monospace;
+    --paper:#FFFFFF;
+    --ink:#141414;
+    --accent:#C8102E;
+
+    --ink-70:rgba(20,20,20,.70);
+    --ink-55:rgba(20,20,20,.55);
+    --ink-40:rgba(20,20,20,.40);
+    --ink-25:rgba(20,20,20,.25);
+    --rule:rgba(20,20,20,.14);
+    --rule-soft:rgba(20,20,20,.07);
+    --tint:rgba(200,16,46,.06);
+
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+    --mono:'SFMono-Regular',ui-monospace,'Cascadia Mono','Segoe UI Mono',Consolas,monospace;
   }
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{height:100%}
   body{
-    background:var(--noir);color:var(--bone);font-family:var(--sans);
-    font-weight:400;-webkit-font-smoothing:antialiased;line-height:1.6;
+    background:var(--paper);color:var(--ink);font-family:var(--sans);
+    line-height:1.6;-webkit-font-smoothing:antialiased;
     font-feature-settings:"tnum";overflow:hidden;
   }
-  ::selection{background:var(--gold);color:var(--noir)}
-
-  /* ---------- icons ---------- */
-  .ico{fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
-  .ico-xs{width:14px;height:14px}
-  .ico-sm{width:18px;height:18px}
-  .ico-md{width:25px;height:25px}
-  .ico-lg{width:32px;height:32px}
-  .ico-xl{width:48px;height:48px}
+  ::selection{background:var(--accent);color:var(--paper)}
 
   /* ---------- deck shell ---------- */
   .deck{position:relative;width:100vw;height:100vh;overflow:hidden}
-  .slides{position:relative;width:100%;height:100%}
   .slide{
     position:absolute;inset:0;
     display:flex;flex-direction:column;justify-content:center;
-    padding:clamp(36px,5vh,72px) clamp(40px,7vw,120px);
-    opacity:0;transition:opacity .45s ease;pointer-events:none;
-    overflow-y:auto;
+    padding:clamp(40px,6vh,80px) clamp(44px,8vw,140px);
+    opacity:0;transition:opacity .4s ease;pointer-events:none;overflow-y:auto;
   }
   .slide.active{opacity:1;pointer-events:auto;z-index:2}
-  .slide-inner{max-width:1180px;margin:0 auto;width:100%}
+  .inner{max-width:1080px;margin:0 auto;width:100%}
 
-  /* ---------- navigation ---------- */
+  /* ---------- progress + nav ---------- */
+  .progress{position:fixed;top:0;left:0;right:0;height:2px;background:var(--rule-soft);z-index:10}
+  .pbar{height:100%;background:var(--accent);transition:width .35s ease}
   .nav{
-    position:fixed;bottom:18px;left:0;right:0;z-index:10;
-    display:flex;justify-content:center;align-items:center;gap:18px;
-    pointer-events:none;
+    position:fixed;bottom:22px;left:0;right:0;z-index:10;
+    display:flex;justify-content:center;align-items:center;gap:16px;pointer-events:none;
   }
   .nav-btn{
-    background:var(--card);border:1px solid var(--rule);color:var(--bone);
-    width:36px;height:36px;display:flex;align-items:center;justify-content:center;
-    cursor:pointer;pointer-events:auto;transition:all .2s ease;
-    font-family:var(--mono);font-size:16px;
+    background:var(--paper);border:1px solid var(--rule);color:var(--ink);
+    width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;pointer-events:auto;transition:all .18s ease;font-size:15px;
   }
-  .nav-btn:hover{background:var(--elevated);border-color:var(--gold)}
-  .nav-counter{
-    font-family:var(--mono);font-size:12px;letter-spacing:.12em;
-    color:var(--caption);text-transform:uppercase;
-    background:var(--card);border:1px solid var(--rule-soft);
-    padding:8px 14px;pointer-events:auto;
+  .nav-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .counter{
+    font-family:var(--mono);font-size:12px;letter-spacing:.12em;color:var(--ink-40);
+    pointer-events:auto;
   }
-  .nav-counter .cur{color:var(--gold)}
-  .progress{
-    position:fixed;top:0;left:0;right:0;height:2px;
-    background:var(--rule-soft);z-index:10;
+  .counter .cur{color:var(--accent)}
+  .hint{
+    position:fixed;top:16px;right:20px;z-index:10;font-family:var(--mono);
+    font-size:10px;letter-spacing:.12em;color:var(--ink-25);text-transform:uppercase;
   }
-  .progress-bar{
-    height:100%;background:var(--gold);
-    transition:width .35s ease;
-  }
+  .hint kbd{color:var(--accent)}
 
   /* ---------- typography ---------- */
-  h1{
-    font-family:var(--serif);font-weight:600;
-    font-size:clamp(46px,7vw,88px);line-height:1.04;letter-spacing:-.01em;color:var(--bone);
-  }
-  h1 .g{color:var(--gold);font-style:italic}
-  h2{
-    font-family:var(--serif);font-weight:600;
-    font-size:clamp(32px,4.4vw,54px);line-height:1.12;color:var(--bone);letter-spacing:-.005em;
-  }
-  h2 .g{color:var(--gold)}
-  h3{
-    font-family:var(--serif);font-weight:600;
-    font-size:clamp(22px,2.6vw,30px);line-height:1.18;color:var(--bone);
-  }
+  h1{font-size:clamp(40px,6.2vw,74px);line-height:1.05;letter-spacing:-.02em;font-weight:700}
+  h1 .a{color:var(--accent)}
+  h2{font-size:clamp(28px,3.8vw,46px);line-height:1.12;letter-spacing:-.015em;font-weight:700}
+  h2 .a{color:var(--accent)}
+  h3{font-size:clamp(18px,2vw,22px);line-height:1.25;font-weight:650}
   .kicker{
-    font-family:var(--mono);font-size:12px;letter-spacing:.18em;
-    text-transform:uppercase;color:var(--gold);margin-bottom:18px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:14px;
   }
-  .lead{
-    font-size:clamp(17px,1.9vw,22px);color:var(--bone-2);line-height:1.6;
-    margin-top:20px;max-width:64ch;font-weight:300;
-  }
-  .lead b{color:var(--bone);font-weight:500}
-  p{font-size:clamp(15px,1.55vw,17.5px);color:var(--bone-2);line-height:1.6}
-  p b{color:var(--bone);font-weight:600}
-  .gold{color:var(--gold)}
-  .alert-c{color:var(--alert)}
-  .pass-c{color:var(--pass)}
+  .lead{font-size:clamp(16px,1.8vw,21px);color:var(--ink-70);line-height:1.55;margin-top:20px;max-width:62ch;font-weight:400}
+  .lead b{color:var(--ink);font-weight:600}
+  p{font-size:clamp(14px,1.5vw,16.5px);color:var(--ink-70);line-height:1.6}
+  p b{color:var(--ink);font-weight:600}
+  .a{color:var(--accent)}
 
   /* ---------- slide head ---------- */
-  .snum{
-    font-family:var(--disp);font-weight:600;font-size:clamp(40px,5vw,60px);
-    color:var(--gold);line-height:.8;margin-bottom:8px;
-  }
-  .slide-head{display:flex;align-items:flex-end;gap:clamp(16px,2vw,28px);margin-bottom:clamp(18px,2.2vw,28px)}
-  .slide-head .sh-tx{display:flex;flex-direction:column;gap:6px}
+  .head{display:flex;align-items:baseline;gap:18px;margin-bottom:clamp(20px,2.6vw,34px)}
+  .snum{font-family:var(--mono);font-size:clamp(13px,1.4vw,15px);color:var(--ink-25);letter-spacing:.1em;padding-top:4px;flex:none}
+  .head .htx{display:flex;flex-direction:column;gap:8px}
 
   /* ---------- title slide ---------- */
-  .title-slide{align-items:center;justify-content:center;text-align:left}
-  .title-slide .ts-inner{max-width:1000px}
-  .title-tag{
-    font-family:var(--mono);font-size:13px;letter-spacing:.16em;
-    text-transform:uppercase;color:var(--caption);margin-bottom:26px;
-    display:flex;align-items:center;gap:14px;
+  .title{justify-content:center}
+  .tag{
+    font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--ink-40);margin-bottom:28px;display:flex;align-items:center;gap:12px;
   }
-  .title-tag .dot{width:10px;height:10px;background:var(--gold);transform:rotate(45deg)}
-  .ts-sub{
-    margin-top:28px;font-size:clamp(18px,2vw,24px);color:var(--bone-2);
-    font-weight:300;line-height:1.55;max-width:62ch;
+  .tag .dot{width:8px;height:8px;background:var(--accent);border-radius:50%}
+  .tsub{margin-top:26px;font-size:clamp(17px,1.9vw,22px);color:var(--ink-70);line-height:1.5;max-width:60ch}
+  .tmeta{
+    margin-top:46px;padding-top:22px;border-top:1px solid var(--rule);
+    display:flex;gap:38px;flex-wrap:wrap;font-family:var(--mono);font-size:11.5px;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--ink-40);
   }
-  .ts-meta{
-    margin-top:48px;padding-top:24px;border-top:1px solid var(--rule);
-    display:flex;gap:32px;flex-wrap:wrap;
-    font-family:var(--mono);font-size:12px;letter-spacing:.1em;
-    text-transform:uppercase;color:var(--muted);
-  }
-  .ts-meta .key{color:var(--gold)}
+  .tmeta .k{color:var(--accent);display:block;margin-bottom:5px}
+  .tmeta b{color:var(--ink);font-weight:600;font-family:var(--sans);font-size:13px;letter-spacing:0;text-transform:none}
 
-  /* ---------- scoring stats ---------- */
-  .stat-row{
-    display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
-    background:var(--rule-soft);border:1px solid var(--rule-soft);margin-top:28px;
-  }
-  .stat{background:var(--noir);padding:22px 20px}
-  .stat .sn{
-    font-family:var(--disp);font-weight:600;font-size:clamp(30px,3.4vw,42px);
-    color:var(--gold);line-height:1;margin-bottom:8px;
-  }
-  .stat .sl{font-size:14px;color:var(--bone-2);line-height:1.5}
-  .stat .sl b{color:var(--bone)}
+  /* ---------- scored-dimensions row ---------- */
+  .scored{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:28px;border-top:1px solid var(--rule)}
+  .scored .sc{padding:24px 22px 24px 0;border-right:1px solid var(--rule)}
+  .scored .sc:last-child{border-right:none;padding-right:0}
+  .scored .sn{font-family:var(--mono);font-size:13px;color:var(--accent);letter-spacing:.1em;margin-bottom:12px}
+  .scored .st{font-weight:650;font-size:17px;margin-bottom:6px}
+  .scored .sd{font-size:13.5px;color:var(--ink-55);line-height:1.5}
 
-  /* ---------- generic card grid ---------- */
-  .q-block{margin-top:24px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-  .q-card{
-    background:var(--card);border:1px solid var(--rule);padding:20px 20px;
-    display:flex;flex-direction:column;gap:10px;
+  /* ---------- priority tier rows ---------- */
+  .tiers{display:flex;flex-direction:column;margin-top:16px;border-top:1px solid var(--rule)}
+  .tier{
+    display:grid;grid-template-columns:118px 1fr;gap:24px;align-items:baseline;
+    padding:17px 0 17px 16px;border-bottom:1px solid var(--rule);border-left:3px solid transparent;
   }
-  .q-card .q-n{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
-  .q-card .q-t{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--bone);line-height:1.3}
-  .q-card p{font-size:14px}
+  .tier.p0{border-left-color:var(--accent)}
+  .tier.p1{border-left-color:var(--ink)}
+  .tier.p2{border-left-color:var(--ink-40)}
+  .tier.p3{border-left-color:var(--ink-25)}
+  .tier.cut{border-left-color:var(--rule)}
+  .tier .tk{display:flex;flex-direction:column;gap:3px}
+  .tier .tk .lvl{font-weight:750;font-size:21px;letter-spacing:-.01em}
+  .tier.p0 .tk .lvl{color:var(--accent)}
+  .tier.cut .tk .lvl{color:var(--ink-40)}
+  .tier .tk .sub{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-40)}
+  .tier .tb .tt{font-weight:650;font-size:17px;line-height:1.25;margin-bottom:3px}
+  .tier.cut .tb .tt{color:var(--ink-55)}
+  .tier .tb .td{font-size:13.5px;color:var(--ink-55);line-height:1.5}
+  .tier .tb .td b{color:var(--ink)}
 
-  /* ---------- priority overview rows ---------- */
-  .prio-overview{display:flex;flex-direction:column;gap:11px;margin-top:18px}
-  .prio-row{
-    display:grid;grid-template-columns:96px 1fr;gap:20px;align-items:stretch;
-    background:var(--card);border:1px solid var(--rule);padding:15px 20px;
-    border-left-width:3px;
-  }
-  .prio-row.p0{border-left-color:var(--gold)}
-  .prio-row.p1{border-left-color:var(--gold-dim)}
-  .prio-row.p2{border-left-color:var(--rule)}
-  .prio-row.p3{border-left-color:var(--muted)}
-  .prio-row.cut{border-left-color:var(--alert);opacity:.8}
-  .prio-badge{
-    display:flex;flex-direction:column;justify-content:center;gap:3px;
-    border-right:1px solid var(--rule-soft);padding-right:16px;
-  }
-  .prio-badge .pb-tier{font-family:var(--disp);font-weight:600;font-size:30px;color:var(--gold);line-height:1}
-  .prio-row.p2 .pb-tier,.prio-row.p3 .pb-tier{color:var(--bone-2)}
-  .prio-row.cut .pb-tier{color:var(--alert)}
-  .prio-badge .pb-l{font-family:var(--mono);font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--caption)}
-  .prio-body{display:flex;flex-direction:column;gap:4px;justify-content:center}
-  .prio-body .pt{font-family:var(--serif);font-weight:600;font-size:19px;color:var(--bone);line-height:1.2}
-  .prio-body .pd{font-size:13.5px;color:var(--bone-2);line-height:1.5}
-  .prio-body .pd b{color:var(--bone)}
+  /* ---------- business-question callout ---------- */
+  .bizq{margin-top:6px;padding:16px 20px;background:var(--tint);border-left:3px solid var(--accent);font-size:clamp(15px,1.6vw,17.5px);color:var(--ink-70);line-height:1.5}
+  .bizq .l{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);display:block;margin-bottom:7px}
+  .bizq b{color:var(--ink);font-weight:600}
+
+  /* ---------- milestone chips ---------- */
+  .ms{display:inline-flex;gap:7px;flex-wrap:wrap;margin-top:14px}
+  .ms .chip{font-family:var(--mono);font-size:11px;color:var(--ink-55);border:1px solid var(--rule);padding:4px 9px;border-radius:3px}
+  .ms .chip b{color:var(--ink);font-weight:600}
 
   /* ---------- tech tags ---------- */
-  .tech-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-  .ttag{
-    font-family:var(--mono);font-size:11.5px;letter-spacing:.01em;
-    padding:6px 11px;border:1px solid var(--rule);color:var(--bone-2);
-    display:inline-flex;align-items:center;gap:8px;line-height:1.3;background:var(--card);
-  }
-  .ttag .tr{font-size:9px;letter-spacing:.07em;text-transform:uppercase;padding:2px 6px;flex:none;font-weight:500}
-  .ttag .tr.adopt{background:rgba(91,214,138,.14);color:var(--pass)}
-  .ttag .tr.build{background:rgba(170,144,104,.18);color:var(--gold)}
-  .ttag .tr.ai{background:rgba(168,159,136,.16);color:var(--caption)}
-  .ttag b{color:var(--bone);font-weight:600}
+  .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  .t{font-family:var(--mono);font-size:11.5px;color:var(--ink-70);border:1px solid var(--rule);padding:6px 11px;border-radius:3px;display:inline-flex;align-items:center;gap:9px;line-height:1.3}
+  .t b{color:var(--ink);font-weight:600;font-family:var(--sans)}
+  .t .r{font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:2px;flex:none}
+  .t .r.build{background:var(--ink);color:var(--paper)}
+  .t .r.adopt{border:1px solid var(--ink-40);color:var(--ink-55)}
+  .t .r.ai{background:var(--tint);color:var(--accent)}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-family:var(--mono);font-size:10.5px;color:var(--ink-40);letter-spacing:.04em}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .legend i{font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:2px;font-style:normal}
+  .legend i.build{background:var(--ink);color:var(--paper)}
+  .legend i.adopt{border:1px solid var(--ink-40);color:var(--ink-55)}
+  .legend i.ai{background:var(--tint);color:var(--accent)}
 
-  /* business-logic callout */
-  .biz{
-    margin-top:8px;padding:15px 20px;background:var(--elevated);
-    border-left:3px solid var(--gold);font-size:clamp(15px,1.65vw,18px);
-    color:var(--bone-2);line-height:1.55;
-  }
-  .biz .biz-l{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:6px}
-  .biz b{color:var(--bone)}
+  /* ---------- calc / verdict ---------- */
+  .calc{border:1px solid var(--rule);border-radius:4px;padding:20px 24px;font-family:var(--mono);font-size:14px;line-height:1.9;color:var(--ink-70);margin-top:6px}
+  .calc .lab{color:var(--accent)}
+  .calc .num{color:var(--ink);font-weight:600}
+  .calc .ans{margin-top:10px;padding-top:13px;border-top:1px solid var(--rule);font-family:var(--sans);font-size:18px;color:var(--ink);font-weight:650}
+  .verdict{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+  .vc{border:1px solid var(--rule);border-radius:4px;padding:15px 18px;display:flex;flex-direction:column;gap:6px}
+  .vc.poc{border-color:var(--accent);background:var(--tint)}
+  .vc.mic{border-color:var(--ink-40)}
+  .vc.none{opacity:.65}
+  .vc .vl{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--accent);text-transform:uppercase}
+  .vc.mic .vl,.vc.none .vl{color:var(--ink-40)}
+  .vc .vt{font-weight:700;font-size:16px}
+  .vc .vd{font-size:12.5px;color:var(--ink-55);line-height:1.5}
 
-  /* role legend */
-  .legend{display:flex;gap:20px;flex-wrap:wrap;margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--caption);letter-spacing:.04em}
-  .legend span{display:inline-flex;align-items:center;gap:8px}
-  .legend i{font-size:9px;letter-spacing:.07em;text-transform:uppercase;padding:2px 6px;font-style:normal}
-  .legend i.adopt{background:rgba(91,214,138,.14);color:var(--pass)}
-  .legend i.build{background:rgba(170,144,104,.18);color:var(--gold)}
-  .legend i.ai{background:rgba(168,159,136,.16);color:var(--caption)}
-
-  /* two-column tech layout */
-  .tcol{display:grid;grid-template-columns:1fr 1fr;gap:clamp(20px,2.6vw,40px);margin-top:6px;align-items:start}
-  .tcol .tc-h{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
-
-  /* ---------- calc / verdict (math slide) ---------- */
-  .calc{
-    background:var(--card);border:1px solid var(--rule);padding:20px 24px;
-    font-family:var(--mono);font-size:14.5px;line-height:1.85;color:var(--bone-2);margin-top:8px;
-  }
-  .calc .label{color:var(--gold)}
-  .calc .num{color:var(--bone);font-weight:500}
-  .calc .answer{
-    margin-top:10px;padding-top:14px;border-top:1px solid var(--rule);
-    font-family:var(--serif);font-size:23px;color:var(--gold);font-weight:600;
-  }
-  .verdict-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
-  .vc{background:var(--card);border:1px solid var(--rule);padding:15px 18px;display:flex;flex-direction:column;gap:6px}
-  .vc.poc{border-color:var(--gold)}
-  .vc.mic{border-color:var(--gold-dim);background:rgba(170,144,104,.1)}
-  .vc.none{opacity:.6}
-  .vc .vc-l{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:var(--gold);text-transform:uppercase}
-  .vc .vc-t{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--bone)}
-  .vc .vc-d{font-size:12.5px;color:var(--bone-2);line-height:1.5}
-
-  /* ---------- checks / reason codes ---------- */
-  .reason-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:6px}
-  .rcode{
-    display:grid;grid-template-columns:26px 1fr;gap:13px;align-items:start;
-    background:var(--card);border:1px solid var(--rule);padding:13px 16px;
-  }
-  .rcode .rc-n{font-family:var(--mono);font-size:12px;color:var(--gold);line-height:1.5}
-  .rcode .rc-code{font-family:var(--mono);font-size:13px;color:var(--alert);font-weight:500;letter-spacing:.02em}
-  .rcode .rc-d{font-size:13px;color:var(--bone-2);line-height:1.5;margin-top:3px}
-  .rcode .rc-d b{color:var(--bone)}
-  .precedence{
-    margin-top:16px;font-family:var(--mono);font-size:12.5px;color:var(--bone-2);
-    background:var(--panel);border:1px dashed var(--rule-soft);padding:13px 18px;line-height:1.7;
-  }
-  .precedence .gold{color:var(--gold)}
+  /* ---------- reason codes ---------- */
+  .reasons{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:4px}
+  .rc{display:grid;grid-template-columns:22px 1fr;gap:12px;align-items:start;border:1px solid var(--rule);border-radius:4px;padding:13px 16px}
+  .rc .rn{font-family:var(--mono);font-size:12px;color:var(--ink-25)}
+  .rc .code{font-family:var(--mono);font-size:12.5px;color:var(--accent);font-weight:600;letter-spacing:.01em}
+  .rc .rd{font-size:12.5px;color:var(--ink-55);line-height:1.45;margin-top:3px}
+  .rc .rd b{color:var(--ink)}
+  .prec{margin-top:15px;font-family:var(--mono);font-size:12px;color:var(--ink-70);border:1px dashed var(--rule);border-radius:4px;padding:13px 18px;line-height:1.7}
+  .prec .a{color:var(--accent)}
 
   /* ---------- split (integrity vs plausibility) ---------- */
-  .split-line{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin-top:8px;background:var(--rule-soft);border:1px solid var(--rule-soft)}
-  .split-col{background:var(--noir);padding:clamp(22px,2.5vw,30px);display:flex;flex-direction:column;gap:13px}
-  .split-col.math{background:var(--card)}
-  .split-col .sc-tag{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
-  .split-col h3{font-size:21px}
-  .split-col ul{list-style:none;display:flex;flex-direction:column;gap:9px}
-  .split-col ul li{font-size:14px;color:var(--bone-2);line-height:1.55;padding-left:18px;position:relative}
-  .split-col ul li::before{content:'';position:absolute;left:0;top:8px;width:6px;height:6px;background:var(--gold);transform:rotate(45deg)}
-  .split-col ul li b{color:var(--bone)}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}
+  .col{border:1px solid var(--rule);border-radius:4px;padding:22px 24px;display:flex;flex-direction:column;gap:12px}
+  .col.ai{background:var(--tint);border-color:var(--accent)}
+  .col .ct{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-40)}
+  .col.ai .ct{color:var(--accent)}
+  .col ul{list-style:none;display:flex;flex-direction:column;gap:9px}
+  .col li{font-size:13.5px;color:var(--ink-70);line-height:1.5;padding-left:16px;position:relative}
+  .col li::before{content:'';position:absolute;left:0;top:8px;width:5px;height:5px;background:var(--ink-40);border-radius:50%}
+  .col.ai li::before{background:var(--accent)}
+  .col li b{color:var(--ink)}
 
-  /* ---------- step rows ---------- */
-  .steps{display:flex;flex-direction:column;gap:11px;margin-top:8px}
-  .step{display:grid;grid-template-columns:54px 1fr 1.4fr;gap:22px;align-items:center;background:var(--card);border:1px solid var(--rule);padding:16px 22px}
-  .step .s-n{font-family:var(--disp);font-weight:600;font-size:34px;color:var(--gold);line-height:.9}
-  .step .s-w{font-family:var(--serif);font-weight:600;font-size:17px;color:var(--bone);line-height:1.3}
-  .step .s-p{font-size:14px;color:var(--bone-2);line-height:1.55}
-  .step .s-p b{color:var(--bone)}
-  .step .s-p code{font-family:var(--mono);font-size:12.5px;color:var(--gold)}
+  /* ---------- two-column ---------- */
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:clamp(20px,3vw,44px);margin-top:6px;align-items:start}
+  .two .ch{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
 
-  /* ---------- cut list ---------- */
-  .cut-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;margin-top:8px}
-  .cutc{background:var(--card);border:1px solid var(--rule-soft);border-left:2px solid var(--alert);padding:14px 18px;display:flex;flex-direction:column;gap:5px}
-  .cutc .cc-name{font-family:var(--serif);font-weight:600;font-size:17px;color:var(--bone);line-height:1.2}
-  .cutc .cc-why{font-size:13px;color:var(--bone-2);line-height:1.5}
-  .cutc .cc-why b{color:var(--alert);font-weight:600}
-  .cutc .cc-tag{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  /* ---------- card grid (bonus) ---------- */
+  .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:4px}
+  .card{border:1px solid var(--rule);border-radius:4px;padding:18px 20px;display:flex;flex-direction:column;gap:9px}
+  .card .cn{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+  .card .ct2{font-weight:650;font-size:16px;line-height:1.25}
+  .card p{font-size:13px}
 
-  /* ---------- adapter list ---------- */
-  .adapt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:8px}
-  .adapt{background:var(--card);border:1px solid var(--rule);padding:14px 18px;display:flex;flex-direction:column;gap:5px}
-  .adapt .ad-sig{font-family:var(--mono);font-size:13px;color:var(--gold);line-height:1.4;word-break:break-word}
-  .adapt .ad-d{font-size:12.5px;color:var(--bone-2);line-height:1.5}
-  .adapt .ad-d b{color:var(--bone)}
+  /* ---------- cut grid ---------- */
+  .cutg{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:4px}
+  .cut-c{border:1px solid var(--rule-soft);border-left:2px solid var(--ink-25);border-radius:4px;padding:13px 17px;display:flex;flex-direction:column;gap:5px}
+  .cut-c .cname{font-weight:650;font-size:15px;line-height:1.2;color:var(--ink-70)}
+  .cut-c .cwhy{font-size:12.5px;color:var(--ink-55);line-height:1.45}
+  .cut-c .cwhy b{color:var(--accent);font-weight:600}
+
+  /* ---------- adapter grid ---------- */
+  .adg{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:6px}
+  .ad{border:1px solid var(--rule);border-radius:4px;padding:13px 17px;display:flex;flex-direction:column;gap:5px}
+  .ad .sig{font-family:var(--mono);font-size:12.5px;color:var(--accent);word-break:break-word}
+  .ad .add{font-size:12.5px;color:var(--ink-55);line-height:1.45}
+  .ad .add b{color:var(--ink)}
+
+  /* ---------- process flow (four blocks) ---------- */
+  .flow{display:grid;grid-template-columns:repeat(4,1fr);margin-top:18px}
+  .fb{border:1px solid var(--rule);border-radius:4px;padding:16px;margin-right:16px;display:flex;flex-direction:column;gap:7px;position:relative}
+  .fb:last-child{margin-right:0}
+  .fb.core{border-color:var(--accent);background:var(--tint)}
+  .fb:not(:last-child)::after{content:'\2192';position:absolute;right:-12px;top:50%;transform:translateY(-50%);color:var(--ink-25);font-size:14px}
+  .fb .fn{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--ink-40)}
+  .fb.core .fn{color:var(--accent)}
+  .fb .ft{font-weight:700;font-size:15.5px;line-height:1.2}
+  .fb .fd{font-size:12px;color:var(--ink-55);line-height:1.45}
+  .fb .fdoc{font-family:var(--mono);font-size:9.5px;color:var(--ink-40);margin-top:6px}
 
   /* ---------- footer callout ---------- */
-  .foot{
-    margin-top:20px;display:flex;gap:14px;align-items:flex-start;
-    padding:17px 20px;background:var(--elevated);border-left:3px solid var(--gold);
-    font-size:clamp(14px,1.5vw,16.5px);color:var(--bone-2);line-height:1.55;
-  }
-  .foot.alert{border-left-color:var(--alert);background:#1a1210}
-  .foot .f-ico{color:var(--gold);flex:none;margin-top:1px}
-  .foot.alert .f-ico{color:var(--alert)}
-  .foot b{color:var(--bone)}
+  .foot{margin-top:20px;display:flex;gap:13px;align-items:flex-start;padding:16px 20px;background:var(--tint);border-left:3px solid var(--accent);font-size:clamp(13.5px,1.5vw,16px);color:var(--ink-70);line-height:1.5;border-radius:0 4px 4px 0}
+  .foot .fi{color:var(--accent);font-weight:750;flex:none;font-family:var(--mono)}
+  .foot b{color:var(--ink)}
 
   /* ---------- closing ---------- */
-  .closing-slide{justify-content:center}
-  .closing-slide .cl-big{font-family:var(--serif);font-weight:600;font-size:clamp(36px,5vw,60px);line-height:1.12;color:var(--bone);max-width:24ch}
-  .closing-slide .cl-big .g{color:var(--gold);font-style:italic}
-  .closing-slide .cl-sub{margin-top:32px;font-size:clamp(18px,1.95vw,22px);color:var(--bone-2);line-height:1.55;max-width:56ch;font-weight:300}
-  .closing-slide .cl-mantra{
-    margin-top:44px;padding:24px 28px;border-left:3px solid var(--gold);background:var(--elevated);
-    font-family:var(--serif);font-style:italic;font-size:clamp(20px,2.2vw,26px);color:var(--bone);line-height:1.4;max-width:55ch;
-  }
-  .closing-slide .cl-meta{margin-top:44px;display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
-  .closing-slide .cl-meta .dot{width:9px;height:9px;background:var(--gold);transform:rotate(45deg);flex:none}
+  .close{justify-content:center}
+  .close .big{font-size:clamp(32px,5vw,58px);line-height:1.1;font-weight:750;max-width:20ch;letter-spacing:-.02em}
+  .close .big .a{color:var(--accent)}
+  .close .csub{margin-top:30px;font-size:clamp(16px,1.9vw,21px);color:var(--ink-70);line-height:1.5;max-width:54ch}
+  .close .mantra{margin-top:40px;padding:22px 26px;border-left:3px solid var(--accent);background:var(--tint);font-size:clamp(18px,2vw,24px);font-weight:600;line-height:1.35;max-width:52ch;border-radius:0 4px 4px 0}
+  .close .cmeta{margin-top:40px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--ink-40);text-transform:uppercase;display:flex;align-items:center;gap:11px}
+  .close .cmeta .dot{width:7px;height:7px;background:var(--accent);border-radius:50%}
 
-  /* ---------- small screens ---------- */
-  @media (max-width:900px){
-    .slide{padding:32px 24px}
-    .q-block,.stat-row,.verdict-row,.split-line,.tcol,.reason-grid,.cut-grid,.adapt-grid{grid-template-columns:1fr}
-    .prio-row{grid-template-columns:72px 1fr;gap:14px}
-    .step{grid-template-columns:44px 1fr;gap:14px}
-    .step .s-p{grid-column:1/-1}
-  }
+  /* ---------- mermaid ---------- */
+  .mermaid{margin-top:14px;display:flex;justify-content:center}
+  .mermaid svg{max-width:100%;height:auto;max-height:58vh}
 
-  .hint{
-    position:fixed;top:14px;right:18px;z-index:10;
-    font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;
-    color:var(--muted);text-transform:uppercase;
-    background:var(--card);border:1px solid var(--rule-soft);padding:6px 11px;
+  /* ---------- responsive ---------- */
+  @media (max-width:860px){
+    .slide{padding:36px 26px}
+    .scored,.verdict,.reasons,.split,.two,.cards,.cutg,.adg,.flow{grid-template-columns:1fr}
+    .scored .sc{border-right:none;border-bottom:1px solid var(--rule);padding-right:0}
+    .scored .sc:last-child{border-bottom:none}
+    .tier{grid-template-columns:90px 1fr;gap:16px}
+    .fb{margin-right:0;margin-bottom:10px}
+    .fb:not(:last-child)::after{display:none}
   }
-  .hint kbd{color:var(--gold);font-family:var(--mono)}
 </style>
 </head>
 <body>
 
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
-  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.4"/></symbol>
-  <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 3 L20 7.4 V16.6 L12 21 L4 16.6 V7.4 Z"/><path d="M4 7.4 L12 11.9 L20 7.4"/><line x1="12" y1="11.9" x2="12" y2="21"/></symbol>
-  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2.6 L19.6 5.6 V11 C19.6 15.8 16.3 19.3 12 21.4 C7.7 19.3 4.4 15.8 4.4 11 V5.6 Z"/></symbol>
-  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.6 L21.4 19.8 H2.6 Z"/><line x1="12" y1="10" x2="12" y2="14.4"/><line x1="12" y1="17" x2="12" y2="17.2"/></symbol>
-  <symbol id="i-check" viewBox="0 0 24 24"><polyline points="4 12.6 9.4 18 20 6.4"/></symbol>
-  <symbol id="i-cross" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></symbol>
-  <symbol id="i-calc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1"/><rect x="8" y="6" width="8" height="3"/><circle cx="9" cy="13" r=".7"/><circle cx="12" cy="13" r=".7"/><circle cx="15" cy="13" r=".7"/><circle cx="9" cy="16.5" r=".7"/><circle cx="12" cy="16.5" r=".7"/><circle cx="15" cy="16.5" r=".7"/></symbol>
-  <symbol id="i-bot" viewBox="0 0 24 24"><rect x="5" y="8" width="14" height="11" rx="2"/><line x1="12" y1="3" x2="12" y2="8"/><circle cx="9" cy="13" r="1"/><circle cx="15" cy="13" r="1"/><line x1="9" y1="17" x2="15" y2="17"/></symbol>
-  <symbol id="i-tree" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="14" r="2"/><circle cx="12" cy="14" r="2"/><circle cx="19" cy="14" r="2"/><circle cx="12" cy="21" r="2"/><line x1="12" y1="7" x2="5" y2="12"/><line x1="12" y1="7" x2="12" y2="12"/><line x1="12" y1="7" x2="19" y2="12"/><line x1="5" y1="16" x2="12" y2="19"/><line x1="12" y1="16" x2="12" y2="19"/><line x1="19" y1="16" x2="12" y2="19"/></symbol>
-  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 L21 8 L12 13 L3 8 Z"/><polyline points="3 12 12 17 21 12"/><polyline points="3 16 12 21 21 16"/></symbol>
-  <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3 V8"/><path d="M15 3 V8"/><path d="M6 8 H18 V12 a6 6 0 0 1 -12 0 Z"/><line x1="12" y1="18" x2="12" y2="22"/></symbol>
-  <symbol id="i-screen" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="1"/><line x1="9" y1="21" x2="15" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></symbol>
-  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3 L13.6 9.2 L20 11 L13.6 12.8 L12 19 L10.4 12.8 L4 11 L10.4 9.2 Z"/></symbol>
-</defs></svg>
+<div class="progress"><div class="pbar" id="pbar"></div></div>
+<div class="hint"><kbd>&larr; &rarr;</kbd> &middot; Space</div>
 
-<div class="progress"><div class="progress-bar" id="pbar"></div></div>
-<div class="hint">Navigate · <kbd>← →</kbd> · <kbd>Space</kbd> · <kbd>Home</kbd> · <kbd>End</kbd></div>
+<div class="deck"><div class="slides">
 
-<div class="deck">
-<div class="slides">
-
-  <!-- ===== Slide 1 · Title ===== -->
-  <section class="slide title-slide active">
-    <div class="slide-inner ts-inner">
-      <div class="title-tag"><span class="dot"></span><span>TrueNorth · Build priority plan · Internal deck</span></div>
-      <h1>What we build, <span class="g">in what order,</span> and why.</h1>
-      <p class="ts-sub">Implementation blocks ranked highest-to-lowest priority. Each block explained by the business question it answers, mapped to the technologies in <b>build-adopt-ai-plan</b>. Anything that's both hard to build <i>and</i> useless on stage has been cut — and the cuts are listed, with reasons.</p>
-      <div class="ts-meta">
-        <span><span class="key">For</span> &nbsp; The build team</span>
-        <span><span class="key">Build</span> &nbsp; Single day · 30 May</span>
-        <span><span class="key">Event day</span> &nbsp; 30 May 2026</span>
-        <span><span class="key">Companion</span> &nbsp; build-adopt-ai-plan.md</span>
+  <!-- ===== 1 · Title ===== -->
+  <section class="slide title active">
+    <div class="inner">
+      <div class="tag"><span class="dot"></span><span>TrueNorth &middot; Build Priority Plan &middot; Internal Deck</span></div>
+      <h1>What we build,<br><span class="a">in what order,</span> and why.</h1>
+      <p class="tsub">Every implementation block, ranked highest-to-lowest priority. Ordering is set by one thing only &mdash; how directly a block moves the scored result. Aligned line-for-line with <b>dev-milestones.md</b> and <b>DESIGN.md</b>.</p>
+      <div class="tmeta">
+        <span><span class="k">For</span><b>The build team</b></span>
+        <span><span class="k">Build window</span><b>Single day &middot; ~5 hours</b></span>
+        <span><span class="k">Event day</span><b>30 May 2026 &middot; Bayview Yards</b></span>
+        <span><span class="k">Companions</span><b>dev-milestones &middot; DESIGN.md</b></span>
       </div>
     </div>
   </section>
 
-  <!-- ===== Slide 2 · Why this order ===== -->
+  <!-- ===== 2 · How we rank ===== -->
   <section class="slide">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <span class="snum">02</span>
-        <div class="sh-tx">
-          <div class="kicker">Why this order</div>
-          <h2>The harness decides the priority. <span class="g">Not us.</span></h2>
-        </div>
+    <div class="inner">
+      <div class="head"><span class="snum">02</span><div class="htx">
+        <div class="kicker">How we rank</div>
+        <h2>The harness sets the order. <span class="a">Not us.</span></h2>
+      </div></div>
+      <p class="lead">The automated scoring harness grades exactly three things. Everything below is ranked by how directly it moves one of them. The two UIs are <b>required and carry the demo</b>, but the harness never scores them &mdash; so they sit beneath the scored core.</p>
+      <div class="scored">
+        <div class="sc"><div class="sn">SCORE #1</div><div class="st">Canadian-content computation</div><div class="sd">Is the percentage and the verdict correct?</div></div>
+        <div class="sc"><div class="sn">SCORE #2</div><div class="st">Anomaly detection</div><div class="sd">Are manipulated chains caught and classified?</div></div>
+        <div class="sc"><div class="sn">SCORE #3</div><div class="st">Edge-case handling</div><div class="sd">Does it stay standing on incomplete / adversarial data?</div></div>
       </div>
-      <p class="lead">The automated scoring harness grades exactly three things. Everything we build is ranked by how directly it moves one of these scores. The supplier and purchaser UIs are <b>required and carry the demo</b>, but the harness does not score them — so they sit below the scored core.</p>
-      <div class="stat-row">
-        <div class="stat"><div class="sn">#1</div><div class="sl"><b>Canadian content computation</b> — is the percentage and verdict correct?</div></div>
-        <div class="stat"><div class="sn">#2</div><div class="sl"><b>Anomaly detection</b> — are manipulated chains caught and classified?</div></div>
-        <div class="stat"><div class="sn">#3</div><div class="sl"><b>Edge-case handling</b> — does it stay standing on incomplete / adversarial data?</div></div>
+      <div class="foot"><span class="fi">&#9656;</span><span><b>The golden rule:</b> build what's scored, polish what's demoed, cut what's neither. Don't start a lower tier until the one above passes its "done when." <b>The bonus is the bonus, not the wage.</b></span></div>
+    </div>
+  </section>
+
+  <!-- ===== 3 · Business process ===== -->
+  <section class="slide">
+    <div class="inner">
+      <div class="head"><span class="snum">03</span><div class="htx">
+        <div class="kicker">The business process</div>
+        <h2>Four blocks. <span class="a">One scored core.</span></h2>
+      </div></div>
+      <p class="lead">End-to-end, the system is a four-stage pipeline: a supplier <b>issues</b> a signed record, the backend <b>links &amp; stores</b> it into a chain, <b>verifies</b> a product on request, and the buyer <b>sees</b> the result. Only the <b>Verify</b> block is harness-scored.</p>
+      <div class="flow">
+        <div class="fb"><span class="fn">01 &middot; SUPPLIER UI</span><span class="ft">Issue</span><span class="fd">Fill contribution, validate, sign with identity, submit.</span><span class="fdoc">DESIGN &sect;6.1 &middot; M4.1</span></div>
+        <div class="fb"><span class="fn">02 &middot; BACKEND</span><span class="ft">Link &amp; store</span><span class="fd">Content-hash as id, persist, reference consumed records &rarr; DAG.</span><span class="fdoc">DESIGN &sect;2&ndash;3 &middot; M2.2</span></div>
+        <div class="fb core"><span class="fn">03 &middot; BACKEND &middot; SCORED</span><span class="ft">Verify</span><span class="fd">Walk chain, check integrity, compute %, return verdict + flags.</span><span class="fdoc">DESIGN &sect;7 &middot; M2.x / M3.x</span></div>
+        <div class="fb"><span class="fn">04 &middot; PURCHASER UI</span><span class="ft">Present</span><span class="fd">QR lookup &rarr; verdict card + provenance graph, non-tech readable.</span><span class="fdoc">DESIGN &sect;6.2 &middot; M4.2</span></div>
       </div>
-      <div class="foot">
-        <svg class="ico ico-md f-ico"><use href="#i-target"/></svg>
-        <span>Two filters applied to every line of the design: <b>(1)</b> is it in the primer's scope? <b>(2)</b> if it's out of scope — is it cheap to build <i>and</i> strong on stage? If a feature is both hard to build and invisible in a demo, it's cut.</span>
+      <div class="foot"><span class="fi">&#9656;</span><span>Maps to the primer's <b>three deliverables</b> (supplier UI = block 1, verification backend = blocks 2&ndash;3, purchaser UI = block 4) and to <b>DESIGN.md</b>'s sequence (&sect;6), pipeline (&sect;7) and lifecycle (&sect;8) diagrams. The next slide zooms into block 3.</span></div>
+    </div>
+  </section>
+
+  <!-- ===== 3 · Priority map ===== -->
+  <section class="slide">
+    <div class="inner">
+      <div class="head"><span class="snum">04</span><div class="htx">
+        <div class="kicker">The priority map</div>
+        <h2>Four build tiers. <span class="a">One cut pile.</span></h2>
+      </div></div>
+      <div class="tiers">
+        <div class="tier p0"><div class="tk"><span class="lvl">P0</span><span class="sub">Scored core</span></div>
+          <div class="tb"><div class="tt">Verification backend &amp; Canadian-content math</div><div class="td">Verify signatures &middot; walk the chain &middot; compute the percentage &middot; return the verdict. <b>The harness scores this first.</b></div></div></div>
+        <div class="tier p1"><div class="tk"><span class="lvl">P1</span><span class="sub">Scored</span></div>
+          <div class="tb"><div class="tt">Integrity checks, the graph &amp; anomaly detection</div><div class="td">The five test categories + mass-balance + AI plausibility scoring. <b>Catch the forger.</b></div></div></div>
+        <div class="tier p2"><div class="tk"><span class="lvl">P2</span><span class="sub">Required &middot; demo</span></div>
+          <div class="tb"><div class="tt">Supplier &amp; purchaser interfaces (QR)</div><div class="td">Required deliverables; not harness-scored, but they <b>carry the live demo.</b></div></div></div>
+        <div class="tier p3"><div class="tk"><span class="lvl">P3</span><span class="sub">Bonus</span></div>
+          <div class="tb"><div class="tt">AI demo flair</div><div class="td">NL verifier &middot; conversational authoring &middot; scripted anomaly. <b>Only after P0&ndash;P2 ship.</b></div></div></div>
+        <div class="tier cut"><div class="tk"><span class="lvl">CUT</span><span class="sub">Pitch as roadmap</span></div>
+          <div class="tb"><div class="tt">Transparency log &middot; DIDs &middot; hardware signing &middot; zk-proofs &middot; RFC 3161</div><div class="td">Hard to build, invisible on stage, out of primer scope. <b>Build none.</b></div></div></div>
       </div>
     </div>
   </section>
 
-  <!-- ===== Slide 3 · Priority map ===== -->
+  <!-- ===== 5 · Verification in three layers ===== -->
   <section class="slide">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <span class="snum">03</span>
-        <div class="sh-tx">
-          <div class="kicker">The priority map</div>
-          <h2>Four build tiers. <span class="g">One cut pile.</span></h2>
-        </div>
+    <div class="inner">
+      <div class="head"><span class="snum">05</span><div class="htx">
+        <div class="kicker">Inside the scored core</div>
+        <h2>Verification in <span class="a">three layers.</span></h2>
+      </div></div>
+      <p class="lead">The Verify block decomposes into three layers, applied in order. Two of them can change the verdict; the third only advises. This is the line the whole architecture defends: <b>crypto &amp; arithmetic decide, AI only flags.</b></p>
+      <div class="tiers">
+        <div class="tier p1"><div class="tk"><span class="lvl">L1</span><span class="sub">Deterministic gates</span></div>
+          <div class="tb"><div class="tt">Integrity &middot; structural &middot; quantity</div><div class="td">Schema + signature + registry (<b>M2.1 / P0</b>), broken-link / cycle / replay (<b>M3.1 / P1</b>), mass-balance (<b>M3.2 / P1</b>). Fixed precedence; a failed node is excluded or the chain rejected. <b>Changes the verdict.</b></div></div></div>
+        <div class="tier p0"><div class="tk"><span class="lvl">L2</span><span class="sub">The math</span></div>
+          <div class="tb"><div class="tt">Cost by country &rarr; thresholds &rarr; verdict</div><div class="td">Sum integer cents, apply 98 / 51, require last substantial transformation in Canada (<b>M2.3 / P0</b>). Pure arithmetic. <b>Produces the verdict.</b></div></div></div>
+        <div class="tier p3"><div class="tk"><span class="lvl">L3</span><span class="sub">Plausibility &middot; advisory</span></div>
+          <div class="tb"><div class="tt">Anomaly / risk score</div><div class="td">A real signature with implausible numbers (<b>M3.3 / P1</b>). Queues a record for an auditor. <b>Never changes the verdict.</b></div></div></div>
       </div>
-      <div class="prio-overview">
-        <div class="prio-row p0">
-          <div class="prio-badge"><span class="pb-tier">P0</span><span class="pb-l">Scored core</span></div>
-          <div class="prio-body"><span class="pt">Verification backend &amp; Canadian-content math</span><span class="pd">Verify signatures, walk the chain, compute the percentage, return the verdict. <b>This is what the harness scores first.</b></span></div>
-        </div>
-        <div class="prio-row p1">
-          <div class="prio-badge"><span class="pb-tier">P1</span><span class="pb-l">Scored</span></div>
-          <div class="prio-body"><span class="pt">Integrity checks, the graph &amp; anomaly detection</span><span class="pd">The five test categories + AI plausibility scoring. <b>Catch the forger.</b></span></div>
-        </div>
-        <div class="prio-row p2">
-          <div class="prio-badge"><span class="pb-tier">P2</span><span class="pb-l">Required · demo</span></div>
-          <div class="prio-body"><span class="pt">Supplier &amp; purchaser interfaces (QR)</span><span class="pd">Required deliverables; not harness-scored, but they <b>carry the live demo.</b></span></div>
-        </div>
-        <div class="prio-row p3">
-          <div class="prio-badge"><span class="pb-tier">P3</span><span class="pb-l">Bonus</span></div>
-          <div class="prio-body"><span class="pt">AI demo flair</span><span class="pd">NL verifier, conversational authoring, live anomaly demo. <b>Only after P0–P2 ship.</b></span></div>
-        </div>
-        <div class="prio-row cut">
-          <div class="prio-badge"><span class="pb-tier">✕</span><span class="pb-l">Cut</span></div>
-          <div class="prio-body"><span class="pt">Transparency log · DIDs · hardware signing · zk-proofs · RFC 3161</span><span class="pd">Hard to build, invisible on stage, out of primer scope. <b>Pitch them as roadmap; build none.</b></span></div>
-        </div>
-      </div>
+      <div class="foot"><span class="fi">&#9656;</span><span>Maps to <b>DESIGN &sect;7</b> (pipeline) and <b>&sect;9</b> (anomaly taxonomy). The five primer test categories live in L1; the #1 scored deliverable is L2. <b>Only L1 and L2 touch the verdict</b> &mdash; L3, and any AI, is advisory by rule.</span></div>
     </div>
   </section>
 
-  <!-- ===== Slide 4 · P0 verification core ===== -->
+  <!-- ===== 6 · The data structure ===== -->
   <section class="slide">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <span class="snum">04</span>
-        <div class="sh-tx">
-          <div class="kicker">P0 · the scored core</div>
-          <h2>The verification backend — <span class="g">the spine.</span></h2>
+    <div class="inner">
+      <div class="head"><span class="snum">06</span><div class="htx">
+        <div class="kicker">The data structure</div>
+        <h2>Two layers: <span class="a">a signed fact, and a verifier's view.</span></h2>
+      </div></div>
+      <p class="lead">Each supplier contribution is one <b>immutable, signed Attestation</b>. The verifier never edits it — it wraps each in a <b>mutable Node</b> for everything it computes. Annotating the signed object would change its hash and break the chain.</p>
+      <div class="split">
+        <div class="col">
+          <span class="ct">Attestation &mdash; immutable, signed</span>
+          <ul>
+            <li><b>supplier_id</b> &mdash; maps to a registry key</li>
+            <li><b>output</b> (product_id, quantity, unit)</li>
+            <li><b>inputs[]</b> &mdash; hashes of consumed records</li>
+            <li><b>materials_cents / labour_cents</b> &mdash; integer cents</li>
+            <li><b>work_country</b> &middot; <b>is_substantial_transformation</b></li>
+            <li><b>signatures[]</b> &mdash; Ed25519</li>
+            <li><b>id = hash(canonicalize(payload))</b></li>
+          </ul>
+        </div>
+        <div class="col">
+          <span class="ct">Node &mdash; mutable, verifier's view</span>
+          <ul>
+            <li><b>input_hashes / consumer_hashes</b> &mdash; bidirectional edges</li>
+            <li><b>sig_valid &middot; signer_known &middot; status</b> (OK / INVALID)</li>
+            <li><b>cost_by_country &middot; subtree_cents</b> &mdash; memoized</li>
+            <li><b>annotations</b> &mdash; overlay (P3), never signed</li>
+            <li><b>anomalies[]</b></li>
+          </ul>
         </div>
       </div>
-      <div class="biz">
-        <span class="biz-l">Business question</span>
-        Can a buyer trust this product is Canadian — <b>without trusting the supplier, and reproducibly by anyone?</b> An HTTP service ingests the attestation chain, proves nothing was altered, and computes the legal verdict.
+      <div class="foot"><span class="fi">&#9656;</span><span>Stored as a <b>map&lt;hash, Node&gt;</b> &mdash; a content-addressed DAG, not a tree. Money is <b>integer cents</b>, never floats. This is the canonical model in <b>build-execution-plan-en.md &sect;3.1</b>; DESIGN &sect;4 is the diagram view of the same thing.</span></div>
+    </div>
+  </section>
+
+  <!-- ===== 7 · The chain in motion ===== -->
+  <section class="slide">
+    <div class="inner">
+      <div class="head"><span class="snum">07</span><div class="htx">
+        <div class="kicker">The chain in motion</div>
+        <h2>Upstream to buyer &mdash; <span class="a">the chain, linked by hash.</span></h2>
+      </div></div>
+      <div class="mermaid">
+flowchart LR
+  subgraph UP["Upstream · raw materials"]
+    direction TB
+    ALU["raw_aluminum&lt;br/&gt;SUP-ALU · CA&lt;br/&gt;mat 500 / lab 200 · id a3f1"]
+    BEAR["steel_bearings&lt;br/&gt;SUP-BEAR · CN imported&lt;br/&gt;mat 40 / lab 10 · id b7c2"]
+  end
+  subgraph MID["Midstream · component"]
+    MOTOR["motor_housing&lt;br/&gt;SUP-MOTOR · CA&lt;br/&gt;lab 300 · id c9d4"]
+  end
+  subgraph DOWN["Downstream · finished product = root"]
+    DRONE["drone_X1&lt;br/&gt;SUP-DRONE · CA · ST&lt;br/&gt;mat 20 / lab 400 · id e5f6"]
+  end
+  subgraph CUST["Customer"]
+    direction TB
+    BUYER["Purchaser&lt;br/&gt;scan QR → root e5f6"]
+    VERDICT["Verdict&lt;br/&gt;1420 / 1470 = 96.6%&lt;br/&gt;MADE_IN_CANADA"]
+  end
+  REG[("Registry&lt;br/&gt;keyid → publicKey, verified")]
+  ALU -->|"ref a3f1 · qty 1"| MOTOR
+  BEAR -->|"ref b7c2 · qty 1"| MOTOR
+  MOTOR -->|"ref c9d4 · qty 1"| DRONE
+  DRONE -->|"GET /verify/e5f6"| BUYER
+  BUYER --> VERDICT
+  REG -.->|"resolveKey · central point"| BUYER
+  classDef imp fill:#fbe9e7,stroke:#c8102e,color:#141414;
+  classDef root fill:#ffffff,stroke:#c8102e,stroke-width:2.5px,color:#141414;
+  classDef reg fill:#f4f4f2,stroke:#9a948a,color:#555555,stroke-dasharray:5 3;
+  class BEAR imp;
+  class DRONE root;
+  class REG reg;
+      </div>
+      <div class="foot"><span class="fi">&#9656;</span><span><b>Decentralized trust:</b> every node carries its own <b>signature</b>, its <b>id is its content hash</b>, and inputs <b>link by hash</b> — so anyone can re-verify the whole chain independently, with no trusted server and no blockchain. <b>The one centralized point</b> is resolving <b>supplier_id &rarr; public key</b>, isolated behind the <code>resolveKey</code> adapter (a mock registry today, DIDs in production).</span></div>
+    </div>
+  </section>
+
+  <!-- ===== 8 · When a node breaks ===== -->
+  <section class="slide">
+    <div class="inner">
+      <div class="head"><span class="snum">08</span><div class="htx">
+        <div class="kicker">When a node breaks</div>
+        <h2>Contained &mdash; <span class="a">but a tampered product can't be certified.</span></h2>
+      </div></div>
+      <p class="lead">Two scopes of "broken." A tampered or unverifiable node means the <b>product that depends on it can't be certified</b> (UNVERIFIABLE) — you never silently drop it and recompute, because dropping a foreign node would <b>inflate</b> the %. But the damage is <b>scoped</b>: upstream, other products, and the system never collapse, and the run never crashes.</p>
+      <div class="flow">
+        <div class="fb"><span class="fn">UPSTREAM</span><span class="ft">Untouched</span><span class="fd">self-validates; doesn't depend on anyone downstream.</span></div>
+        <div class="fb"><span class="fn">TAMPERED NODE</span><span class="ft">Cost untrusted</span><span class="fd">can't trust its number — can't include it or drop it.</span></div>
+        <div class="fb core"><span class="fn">ITS PRODUCT</span><span class="ft">UNVERIFIABLE</span><span class="fd">a chain with a forged link can't be honestly certified.</span></div>
+        <div class="fb"><span class="fn">OTHERS &amp; SYSTEM</span><span class="ft">Unaffected</span><span class="fd">other products still certify; no crash.</span></div>
+      </div>
+      <div class="tiers" style="margin-top:14px">
+        <div class="tier p0"><div class="tk"><span class="lvl" style="font-size:14px">UNVERIFIABLE</span><span class="sub">can't certify</span></div>
+          <div class="tb"><div class="tt" style="font-size:14.5px">SIGNATURE_INVALID &middot; UNKNOWN_ISSUER &middot; BROKEN_LINK &middot; MALFORMED (required field)</div><div class="td">Cost base can't be trusted &rarr; no honest %. <b>Never dropped from the sum</b> — dropping a foreign node would <b>inflate</b> the Canadian %. Upstream &amp; other products untouched.</div></div></div>
+        <div class="tier p1"><div class="tk"><span class="lvl" style="font-size:14px">NONE</span><span class="sub">rejected</span></div>
+          <div class="tb"><div class="tt" style="font-size:14.5px">MASS_BALANCE (over-claim / fraud) &middot; CYCLE (can't be traversed)</div><div class="td">The chain is provably wrong or untraversable &rarr; the product is rejected outright.</div></div></div>
+        <div class="tier p3"><div class="tk"><span class="lvl" style="font-size:14px">CERTIFIES</span><span class="sub">advisory</span></div>
+          <div class="tb"><div class="tt" style="font-size:14.5px">Anomaly risk score (M3.3) &middot; missing optional field</div><div class="td">A real signature with implausible numbers is <b>flagged for review, verdict unchanged</b>; a missing optional field degrades gracefully. <b>The only "still certifies" cases.</b></div></div></div>
+      </div>
+      <div class="foot"><span class="fi">&#9656;</span><span><b>Why UNVERIFIABLE, not a "degraded number"?</b> A provenance system that silently works around a forged link is worthless — and dropping an unverifiable foreign node would inflate the %. <b>Why it doesn't cascade:</b> each node self-validates and inputs are <b>hashes, not pointers</b>, so other nodes stay valid and nothing crashes. Aligned with <b>DESIGN &sect;7</b> and <b>build-execution-plan &sect;3.3</b>.</span></div>
+    </div>
+  </section>
+
+  <!-- ===== 4 · P0 backend ===== -->
+  <section class="slide">
+    <div class="inner">
+      <div class="head"><span class="snum">09</span><div class="htx">
+        <div class="kicker">P0 &middot; the scored core</div>
+        <h2>The verification backend &mdash; <span class="a">the spine.</span></h2>
+      </div></div>
+      <div class="bizq"><span class="l">Business question</span>Can a buyer trust this product is Canadian &mdash; <b>without trusting the supplier, and reproducibly by anyone?</b> An HTTP service ingests the attestation chain, proves nothing was altered, walks the DAG, and returns the legal verdict.</div>
+      <div class="ms">
+        <span class="chip"><b>M1.0</b> adapter translation</span>
+        <span class="chip"><b>M2.1</b> signature + schema</span>
+        <span class="chip"><b>M2.2</b> chain walk / graph</span>
+        <span class="chip">DESIGN &sect;2 content addressing</span>
+        <span class="chip">DESIGN &sect;11 API contract</span>
       </div>
       <div class="legend">
-        <span><i class="adopt">Adopt</i> use a vetted library/standard</span>
-        <span><i class="build">Build</i> deterministic code we write</span>
+        <span><i class="adopt">Adopt</i> vetted library / standard</span>
+        <span><i class="build">Build</i> deterministic code we own</span>
         <span><i class="ai">AI</i> advisory, never in the verdict path</span>
       </div>
-      <div class="tech-tags">
-        <span class="ttag"><span class="tr adopt">Adopt</span><b>pyca/cryptography</b> — Ed25519 verify</span>
-        <span class="ttag"><span class="tr adopt">Adopt</span><b>SHA-256</b> — content addressing of each attestation</span>
-        <span class="ttag"><span class="tr adopt">Adopt</span><b>DSSE</b> — signing envelope (from the event-day reference library)</span>
-        <span class="ttag"><span class="tr adopt">Adopt</span><b>JSON Schema 2020-12</b> — reject MALFORMED records</span>
-        <span class="ttag"><span class="tr adopt">Adopt</span><b>ULID</b> — attestation IDs</span>
-        <span class="ttag"><span class="tr adopt">Adopt</span><b>in-toto</b> — the attestation pattern we cite in the pitch</span>
-        <span class="ttag"><span class="tr build">Build</span><b>verifyAttestation()</b> — signature + schema gate</span>
-        <span class="ttag"><span class="tr build">Build</span><b>walkChain()</b> — traverse the DAG of inputs</span>
+      <div class="tags">
+        <span class="t"><span class="r adopt">Adopt</span><b>pyca/cryptography</b> &mdash; Ed25519 verify</span>
+        <span class="t"><span class="r adopt">Adopt</span><b>SHA-256</b> &mdash; content address each attestation</span>
+        <span class="t"><span class="r adopt">Adopt</span><b>DSSE / JCS</b> &mdash; signing input, from the reference library</span>
+        <span class="t"><span class="r adopt">Adopt</span><b>JSON Schema 2020-12</b> &mdash; reject MALFORMED</span>
+        <span class="t"><span class="r build">Build</span><b>verify()</b> &mdash; signature + schema gate</span>
+        <span class="t"><span class="r build">Build</span><b>walkChain()</b> &mdash; traverse the input DAG, guard cycles</span>
       </div>
-      <div class="foot">
-        <svg class="ico ico-md f-ico"><use href="#i-shield"/></svg>
-        <span><b>Don't reimplement crypto.</b> Event day ships a reference library for signing/verifying — call it. Canonical serialization (DSSE vs. JCS) is decided by that library, not by us. Our job is to wire it, not rebuild it.</span>
-      </div>
+      <div class="foot"><span class="fi">&#9656;</span><span><b>Don't reimplement crypto.</b> Event day ships a reference library for signing/verifying &mdash; call it. Canonical serialization (DSSE vs. JCS) is decided by that library, not by us. The endpoints are fixed: <b>POST /attestations</b>, <b>GET /verify/{root}</b>, <b>GET /health</b>.</span></div>
     </div>
   </section>
 
-  <!-- ===== Slide 5 · P0 the math ===== -->
+  <!-- ===== 5 · P0 math + verdict ===== -->
   <section class="slide">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <span class="snum">05</span>
-        <div class="sh-tx">
-          <div class="kicker">P0 · the legal output</div>
-          <h2>The math, exactly. <span class="g">No AI, ever.</span></h2>
-        </div>
-      </div>
-      <div class="biz">
-        <span class="biz-l">Business question</span>
-        <b>What percentage is Canadian, and which label applies?</b> This is the #1 scored deliverable and the part a court could audit — so it is pure, reproducible arithmetic.
-      </div>
+    <div class="inner">
+      <div class="head"><span class="snum">10</span><div class="htx">
+        <div class="kicker">P0 &middot; the legal output</div>
+        <h2>The math, exactly. <span class="a">No AI, ever.</span></h2>
+      </div></div>
+      <div class="bizq"><span class="l">Business question</span><b>What percentage is Canadian, and which label applies?</b> The #1 scored deliverable and the part a court could audit &mdash; pure, reproducible arithmetic in <b>integer cents, never floats.</b></div>
       <div class="calc">
-        <div><span class="label">totalCostCents</span> &nbsp;=&nbsp; <span class="num">Σ contribution.totalCostCents</span> &nbsp; over the chain</div>
-        <div><span class="label">canadianCostCents</span> &nbsp;=&nbsp; <span class="num">Σ contribution.canadianCostCents</span> &nbsp; over the chain</div>
-        <div class="answer">percent = round( canadianCostCents / totalCostCents × 100 )</div>
+        <div><span class="lab">totalCostCents</span> = <span class="num">&Sigma; contribution.totalCostCents</span> over the chain</div>
+        <div><span class="lab">canadianCostCents</span> = <span class="num">&Sigma; contribution.canadianCostCents</span> over the chain</div>
+        <div class="ans">percent = round( canadianCostCents / totalCostCents &times; 100 )</div>
       </div>
-      <div class="verdict-row">
-        <div class="vc none"><span class="vc-l">otherwise</span><span class="vc-t">NONE</span><span class="vc-d">Below 51%, or last substantial transformation not in Canada.</span></div>
-        <div class="vc mic"><span class="vc-l">≥ 51% &amp; last ST in CA</span><span class="vc-t">MADE_IN_CANADA</span><span class="vc-d">The 51% legal threshold, verbatim from the Competition Bureau.</span></div>
-        <div class="vc poc"><span class="vc-l">≥ 98% &amp; last ST in CA</span><span class="vc-t">PRODUCT_OF_CANADA</span><span class="vc-d">The 98% legal threshold, verbatim.</span></div>
+      <div class="verdict">
+        <div class="vc poc"><span class="vl">&ge; 98% &amp; last ST in CA</span><span class="vt">PRODUCT_OF_CANADA</span><span class="vd">98% threshold, verbatim from the Competition Bureau.</span></div>
+        <div class="vc mic"><span class="vl">&ge; 51% &amp; last ST in CA</span><span class="vt">MADE_IN_CANADA</span><span class="vd">51% threshold, verbatim.</span></div>
+        <div class="vc none"><span class="vl">otherwise</span><span class="vt">NONE</span><span class="vd">Below 51%, <b>or</b> last substantial transformation not in Canada.</span></div>
       </div>
-      <div class="tech-tags">
-        <span class="ttag"><span class="tr adopt">Adopt</span><b>Competition Bureau thresholds</b> — 98 / 51, hard-coded constants</span>
-        <span class="ttag"><span class="tr build">Build</span><b>computeCanadianContent()</b></span>
-        <span class="ttag"><span class="tr build">Build</span><b>integer cents</b> — no floats (float math diverges across runtimes)</span>
-      </div>
-      <div class="foot alert">
-        <svg class="ico ico-md f-ico"><use href="#i-alert"/></svg>
-        <span>The primer says the event-day spec <b>defines how to identify "substantial transformation."</b> Our current assumption (a flag on tier-0) is a guess — confirm it against the spec on 5.30 morning before trusting the verdict.</span>
-      </div>
+      <div class="foot"><span class="fi">&#9656;</span><span><b>Both conditions are required</b> &mdash; cost threshold <b>and</b> last substantial transformation in Canada (Competition Bureau). The primer says the spec <b>defines how to identify "substantial transformation."</b> Our Phase-0 assumption is a guess &mdash; confirm it on 5.30 morning before trusting the verdict.</span></div>
     </div>
   </section>
 
-  <!-- ===== Slide 6 · P1 integrity checks ===== -->
+  <!-- ===== 6 · P1 reason codes ===== -->
   <section class="slide">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <span class="snum">06</span>
-        <div class="sh-tx">
-          <div class="kicker">P1 · catch the forger · the deterministic half</div>
-          <h2>Five test categories → <span class="g">named rejections.</span></h2>
-        </div>
+    <div class="inner">
+      <div class="head"><span class="snum">11</span><div class="htx">
+        <div class="kicker">P1 &middot; catch the forger &middot; the deterministic half</div>
+        <h2>Five test categories &rarr; <span class="a">named rejections.</span></h2>
+      </div></div>
+      <div class="bizq"><span class="l">Business question</span><b>What happens when the data is manipulated or incomplete?</b> The primer's five categories are graded directly. Each maps to a deterministic check with a named reason code &mdash; the right reason for the right failure.</div>
+      <div class="reasons">
+        <div class="rc"><span class="rn">01</span><div><span class="code">SIGNATURE_INVALID</span><div class="rd"><b>Integrity:</b> record altered after signing &mdash; fingerprint no longer matches.</div></div></div>
+        <div class="rc"><span class="rn">02</span><div><span class="code">UNKNOWN_ISSUER</span><div class="rd"><b>Integrity:</b> signer not in the verified registry, <b>or</b> that key doesn't verify the signature.</div></div></div>
+        <div class="rc"><span class="rn">03</span><div><span class="code">REPLAY_DETECTED</span><div class="rd"><b>Replay:</b> attestation reused across chains / duplicate output serial.</div></div></div>
+        <div class="rc"><span class="rn">04</span><div><span class="code">BROKEN_LINK / CYCLE</span><div class="rd"><b>Structural:</b> dangling input reference, impossible ordering, self-reference.</div></div></div>
+        <div class="rc"><span class="rn">05</span><div><span class="code">MASS_BALANCE</span><div class="rd"><b>Quantity:</b> more material consumed than upstream ever produced.</div></div></div>
+        <div class="rc"><span class="rn">06</span><div><span class="code">MALFORMED</span><div class="rd"><b>Incomplete:</b> missing required fields &mdash; flag and degrade, don't crash.</div></div></div>
       </div>
-      <div class="biz">
-        <span class="biz-l">Business question</span>
-        <b>What happens when the data is manipulated or incomplete?</b> The primer's five test categories are graded directly. Each maps to a deterministic check with a named reason code.
-      </div>
-      <div class="reason-grid">
-        <div class="rcode"><span class="rc-n">01</span><div><span class="rc-code">SIGNATURE_INVALID</span><div class="rc-d"><b>Integrity:</b> record altered after signing — fingerprint no longer matches.</div></div></div>
-        <div class="rcode"><span class="rc-n">02</span><div><span class="rc-code">UNKNOWN_ISSUER</span><div class="rc-d"><b>Integrity:</b> signer not in the verified registry, or key doesn't verify.</div></div></div>
-        <div class="rcode"><span class="rc-n">03</span><div><span class="rc-code">REPLAY_DETECTED</span><div class="rc-d"><b>Replay:</b> wrong product, duplicate ID / nonce — chain reuse.</div></div></div>
-        <div class="rcode"><span class="rc-n">04</span><div><span class="rc-code">BROKEN_LINK / CYCLE</span><div class="rc-d"><b>Structural:</b> dangling input, bad ordering, self-reference.</div></div></div>
-        <div class="rcode"><span class="rc-n">05</span><div><span class="rc-code">MASS_BALANCE</span><div class="rc-d"><b>Quantity:</b> more material consumed than upstream ever produced.</div></div></div>
-        <div class="rcode"><span class="rc-n">06</span><div><span class="rc-code">MALFORMED</span><div class="rc-d"><b>Incomplete:</b> missing required fields — handle uncertainty, don't crash.</div></div></div>
-      </div>
-      <div class="precedence">
-        Fixed precedence (a record fails on the <span class="gold">first</span> applicable code): &nbsp; MALFORMED <span class="gold">→</span> SIGNATURE_INVALID <span class="gold">→</span> UNKNOWN_ISSUER <span class="gold">→</span> REPLAY_DETECTED <span class="gold">→</span> BROKEN_LINK / CYCLE
-      </div>
+      <div class="prec">Fixed precedence (a record fails on the <span class="a">first</span> applicable code):&nbsp; MALFORMED <span class="a">&rarr;</span> SIGNATURE_INVALID <span class="a">&rarr;</span> UNKNOWN_ISSUER <span class="a">&rarr;</span> REPLAY_DETECTED <span class="a">&rarr;</span> BROKEN_LINK / CYCLE</div>
     </div>
   </section>
 
-  <!-- ===== Slide 7 · P1 anomaly detection ===== -->
+  <!-- ===== 7 · P1 anomaly + graph ===== -->
   <section class="slide">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <span class="snum">07</span>
-        <div class="sh-tx">
-          <div class="kicker">P1 · catch the forger · the plausibility half</div>
-          <h2>The signature is real. <span class="g">The numbers lie.</span></h2>
-        </div>
-      </div>
-      <div class="split-line">
-        <div class="split-col math">
-          <span class="sc-tag">Crypto for integrity — deterministic</span>
-          <h3>Catches tampering</h3>
+    <div class="inner">
+      <div class="head"><span class="snum">12</span><div class="htx">
+        <div class="kicker">P1 &middot; catch the forger &middot; the plausibility half</div>
+        <h2>The signature is real. <span class="a">The numbers lie.</span></h2>
+      </div></div>
+      <div class="split">
+        <div class="col">
+          <span class="ct">Crypto for integrity &mdash; deterministic</span>
           <ul>
-            <li>Edited record → <b>signature fails</b></li>
-            <li>Fake supplier → <b>not in registry</b></li>
-            <li>But: a <b>real supplier signing inflated-but-valid numbers</b> passes every cryptographic check</li>
+            <li>Edited record &rarr; <b>signature fails</b></li>
+            <li>Fake supplier &rarr; <b>not in registry</b></li>
+            <li>Mass-balance closes the over-claim attack across the graph</li>
+            <li>But a <b>real supplier signing inflated-but-valid numbers</b> passes every crypto check</li>
           </ul>
         </div>
-        <div class="split-col">
-          <span class="sc-tag">AI for plausibility — advisory</span>
-          <h3>Catches lying</h3>
+        <div class="col ai">
+          <span class="ct">AI for plausibility &mdash; advisory only</span>
           <ul>
-            <li>Labour cost 5× the regional norm → <b>risk score 0.94</b></li>
-            <li>Throughput above attested facility capacity</li>
+            <li>Labour cost 5&times; the regional norm &rarr; <b>risk 0.94</b></li>
+            <li>Throughput above attested capacity</li>
             <li>Geographic / temporal implausibility</li>
-            <li>Queues the record for an auditor — <b>never alters the verdict</b></li>
+            <li>Queues the record for an auditor &mdash; <b>never alters the verdict</b></li>
           </ul>
         </div>
       </div>
-      <div class="tech-tags">
-        <span class="ttag"><span class="tr ai">AI</span><b>scikit-learn IsolationForest / PyOD</b> — unsupervised anomaly score</span>
-        <span class="ttag"><span class="tr ai">AI</span><b>XGBoost / LightGBM</b> — supervised cost-outlier (if labels exist)</span>
-        <span class="ttag"><span class="tr adopt">Adopt</span><b>StatsCan wage data + NAICS</b> — the benchmark features</span>
+      <div class="ms">
+        <span class="chip"><b>M3.1</b> structural + precedence</span>
+        <span class="chip"><b>M3.2</b> mass-balance</span>
+        <span class="chip"><b>M3.3</b> anomaly scoring</span>
+        <span class="chip">DESIGN &sect;9 anomaly taxonomy</span>
       </div>
-      <div class="foot">
-        <svg class="ico ico-md f-ico"><use href="#i-spark"/></svg>
-        <span>This is the second scored dimension <b>and</b> the cleanest 30 seconds on stage: a valid signature, a 0.94 risk score, the auditor queue lighting up. <b>Crypto for integrity, AI for plausibility</b> — demonstrated live.</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== Slide 8 · P1 provenance graph ===== -->
-  <section class="slide">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <span class="snum">08</span>
-        <div class="sh-tx">
-          <div class="kicker">P1 · the provenance graph</div>
-          <h2>Flat attestations → <span class="g">a chain of custody.</span></h2>
-        </div>
-      </div>
-      <div class="biz">
-        <span class="biz-l">Business question</span>
-        <b>Where did every dollar come from, and is the structure sound?</b> Each attestation references the fingerprints of the ones it consumed. That forms a DAG we traverse for the math and render for the buyer.
-      </div>
-      <div class="tech-tags">
-        <span class="ttag"><span class="tr build">Build</span><b>content-addressed references</b> — SHA-256 links, no bespoke hash-chain</span>
-        <span class="ttag"><span class="tr build">Build</span><b>buildGraph()</b> — nodes + edges from the inputs array</span>
-        <span class="ttag"><span class="tr build">Build</span><b>visited-set cycle guard</b></span>
-        <span class="ttag"><span class="tr build">Build</span><b>mass-balance check</b> — closes the over-claim attack</span>
-        <span class="ttag"><span class="tr adopt">Adopt</span><b>Cytoscape.js</b> / React Flow / D3 — render any DAG</span>
-      </div>
-      <div class="foot">
-        <svg class="ico ico-md f-ico"><use href="#i-tree"/></svg>
-        <span>Render against the <b>Graph shape</b>, never a library-specific format — event-day data could be a 4-node toy or a 50-node tree. Node colour is driven by the reason-code <code>status</code>, so a broken link is visible at a glance. The graph is both a scored structure and a demo centrepiece.</span>
+      <div class="tags">
+        <span class="t"><span class="r ai">AI</span><b>IsolationForest / PyOD</b> &mdash; unsupervised anomaly score</span>
+        <span class="t"><span class="r adopt">Adopt</span><b>StatsCan wages + NAICS</b> &mdash; benchmark features</span>
+        <span class="t"><span class="r adopt">Adopt</span><b>Cytoscape.js</b> &mdash; render any DAG, colour by status</span>
       </div>
     </div>
   </section>
 
-  <!-- ===== Slide 9 · P2 interfaces ===== -->
+  <!-- ===== 8 · P2 interfaces ===== -->
   <section class="slide">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <span class="snum">09</span>
-        <div class="sh-tx">
-          <div class="kicker">P2 · required deliverables · carry the demo</div>
-          <h2>Two rooms: <span class="g">issue, and verify.</span></h2>
-        </div>
-      </div>
-      <div class="tcol">
+    <div class="inner">
+      <div class="head"><span class="snum">13</span><div class="htx">
+        <div class="kicker">P2 &middot; required deliverables &middot; carry the demo</div>
+        <h2>Two rooms: <span class="a">issue, and verify.</span></h2>
+      </div></div>
+      <div class="two">
         <div>
-          <div class="tc-h">Supplier room — issue an attestation</div>
-          <div class="biz" style="margin-top:0"><span class="biz-l">Business question</span>Can a 4-person CNC shop file a valid attestation in minutes?</div>
-          <div class="tech-tags">
-            <span class="ttag"><span class="tr adopt">Adopt</span><b>React + Tailwind</b></span>
-            <span class="ttag"><span class="tr build">Build</span><b>schema validation before signing</b></span>
-            <span class="ttag"><span class="tr build">Build</span><b>signing flow</b> — human confirms, then signs</span>
-            <span class="ttag"><span class="tr ai">AI</span><b>authoring assistant</b> — plain English → draft</span>
+          <div class="ch">Supplier room &mdash; issue an attestation</div>
+          <div class="bizq" style="margin-top:0"><span class="l">Business question</span>Can a small CNC shop file a valid, signed attestation in minutes?</div>
+          <div class="tags">
+            <span class="t"><span class="r adopt">Adopt</span><b>React + Tailwind</b></span>
+            <span class="t"><span class="r build">Build</span><b>schema-validate before signing</b></span>
+            <span class="t"><span class="r build">Build</span><b>signing flow</b> &mdash; human confirms, then signs</span>
           </div>
         </div>
         <div>
-          <div class="tc-h">Purchaser room — verify a product</div>
-          <div class="biz" style="margin-top:0"><span class="biz-l">Business question</span>Can a non-technical procurement officer verify in 30 seconds?</div>
-          <div class="tech-tags">
-            <span class="ttag"><span class="tr adopt">Adopt</span><b>React + Cytoscape.js</b></span>
-            <span class="ttag"><span class="tr adopt">Adopt</span><b>browser QR scanning</b> — needs HTTPS/localhost</span>
-            <span class="ttag"><span class="tr build">Build</span><b>verdict card</b> — percent · verdict · flags</span>
+          <div class="ch">Purchaser room &mdash; verify a product</div>
+          <div class="bizq" style="margin-top:0"><span class="l">Business question</span>Can a non-technical buyer verify in 30 seconds?</div>
+          <div class="tags">
+            <span class="t"><span class="r adopt">Adopt</span><b>browser QR scanning</b> &mdash; HTTPS / localhost</span>
+            <span class="t"><span class="r build">Build</span><b>verdict card</b> &mdash; percent &middot; label &middot; flags</span>
+            <span class="t"><span class="r build">Build</span><b>provenance graph</b> view</span>
           </div>
         </div>
       </div>
-      <div class="foot alert">
-        <svg class="ico ico-md f-ico"><use href="#i-alert"/></svg>
-        <span>Verify <b>QR scanning in the browser today</b> — camera APIs need HTTPS or localhost and behave differently per browser. It's the most common silent half-day loss. The harness doesn't score these UIs, but a broken demo sinks the pitch.</span>
-      </div>
+      <div class="ms"><span class="chip"><b>M4.1</b> supplier room</span><span class="chip"><b>M4.2</b> purchaser room</span><span class="chip"><b>M0.6</b> QR proven pre-event</span></div>
+      <div class="foot"><span class="fi">&#9656;</span><span>Prove <b>QR scanning in the browser before 5.30</b> &mdash; camera APIs need HTTPS/localhost and differ per browser. It's the most common silent half-day loss. The harness doesn't score these, but a broken demo sinks the pitch.</span></div>
     </div>
   </section>
 
-  <!-- ===== Slide 10 · P3 bonus ===== -->
+  <!-- ===== 9 · P3 bonus ===== -->
   <section class="slide">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <span class="snum">10</span>
-        <div class="sh-tx">
-          <div class="kicker">P3 · bonus · only after P0–P2 ship</div>
-          <h2>AI flair — <span class="g">the bonus, not the wage.</span></h2>
-        </div>
+    <div class="inner">
+      <div class="head"><span class="snum">14</span><div class="htx">
+        <div class="kicker">P3 &middot; bonus &middot; only after P0&ndash;P2 ship</div>
+        <h2>AI flair &mdash; <span class="a">the bonus, not the wage.</span></h2>
+      </div></div>
+      <div class="cards">
+        <div class="card"><span class="cn">Highest ROI &middot; M5.2</span><span class="ct2">Natural-language verifier</span><p>"Which components trace to one foreign sub-supplier?" &rarr; Claude rewrites it into a deterministic graph query &rarr; answer cites attestation IDs. <b>Numbers from the math, never the model.</b></p></div>
+        <div class="card"><span class="cn">Demo gold &middot; M5.1</span><span class="ct2">Conversational authoring</span><p>Supplier types "we milled 50 airframes, 3 machinists &times; 6 hrs at $42/hr" &rarr; LLM drafts the structured attestation &rarr; human signs. AI as accelerator, not authority.</p></div>
+        <div class="card"><span class="cn">Cleanest 30 sec</span><span class="ct2">Live cost-inflation anomaly</span><p>Already built in P1 &mdash; just script it. Valid signature, 0.94 risk score, auditor queue lights up.</p></div>
+        <div class="card"><span class="cn">Pitch story &middot; M5.3</span><span class="ct2">Strategic-criticality overlay</span><p>Annotate each component critical / standard / commodity. <b>Lives in our overlay layer &mdash; never alters the legal verdict.</b></p></div>
       </div>
-      <div class="q-block" style="grid-template-columns:repeat(2,1fr)">
-        <div class="q-card" style="border-color:var(--gold-dim)">
-          <span class="q-n">Highest ROI · ~½ day</span>
-          <span class="q-t">Natural-language verifier</span>
-          <p>"Which components trace back to one foreign sub-supplier?" → Claude rewrites it into a deterministic graph query → answer cites attestation IDs. <b>Numbers come from the math, never the model.</b></p>
-        </div>
-        <div class="q-card" style="border-color:var(--gold-dim)">
-          <span class="q-n">Demo gold · ~½ day</span>
-          <span class="q-t">Conversational authoring</span>
-          <p>Supplier types "we milled 50 airframes, 3 machinists × 6 hrs at $42/hr" → LLM drafts the structured attestation → human signs. AI as accelerator, not authority.</p>
-        </div>
-        <div class="q-card">
-          <span class="q-n">Cleanest 30 sec</span>
-          <span class="q-t">Live anomaly on a cost-inflation attack</span>
-          <p>Already built in P1 — just script it into the demo. Valid signature, 0.94 risk score, auditor queue lights up.</p>
-        </div>
-        <div class="q-card">
-          <span class="q-n">Pitch story · ~10 min</span>
-          <span class="q-t">Reconciliation report (single canned example)</span>
-          <p>One hard-coded "CBSA import" example + an LLM-drafted comparison report. Strong defence-procurement story; <b>the harness gives you nothing to reconcile against, so don't build the real pipeline.</b></p>
-        </div>
-      </div>
-      <div class="foot alert">
-        <svg class="ico ico-md f-ico"><use href="#i-cross"/></svg>
-        <span><b>Hard rule:</b> if the core backend hasn't passed the happy path + all five test categories, don't touch a single P3 item. The bonus is the bonus. Earn the wage first.</span>
-      </div>
+      <div class="foot"><span class="fi">&#9656;</span><span><b>Hard rule:</b> if the core hasn't passed the happy path + all five test categories, don't touch a single P3 item. On a ~5-hour day, assume you reach <b>at most one</b> of these.</span></div>
     </div>
   </section>
 
-  <!-- ===== Slide 11 · Cut list ===== -->
+  <!-- ===== 10 · Cut pile ===== -->
   <section class="slide">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <span class="snum">11</span>
-        <div class="sh-tx">
-          <div class="kicker">The cut pile · build none, pitch as roadmap</div>
-          <h2>Hard to build <span class="g">and</span> invisible on stage.</h2>
-        </div>
+    <div class="inner">
+      <div class="head"><span class="snum">15</span><div class="htx">
+        <div class="kicker">The cut pile &middot; build none, pitch as roadmap</div>
+        <h2>Hard to build <span class="a">and</span> invisible on stage.</h2>
+      </div></div>
+      <div class="cutg">
+        <div class="cut-c"><span class="cname">Transparency log (Rekor / Trillian / Merkle)</span><span class="cwhy"><b>Cut:</b> out of primer scope &middot; no visual demo &middot; replay handled by a uniqueness set.</span></div>
+        <div class="cut-c"><span class="cname">DIDs &middot; Verifiable Credentials &middot; GCKey</span><span class="cwhy"><b>Cut:</b> registry is handed to us mocked &mdash; we just look up keyid &rarr; publicKey.</span></div>
+        <div class="cut-c"><span class="cname">FIDO2 / WebAuthn / HSM hardware signing</span><span class="cwhy"><b>Cut:</b> a time sink &middot; software signing + a key icon demos the same idea.</span></div>
+        <div class="cut-c"><span class="cname">RFC 3161 trusted timestamps</span><span class="cwhy"><b>Cut from build</b> &middot; only <i>verify</i> one if the schema happens to include it.</span></div>
+        <div class="cut-c"><span class="cname">Bulletproofs &middot; zk-range proofs &middot; threshold decryption</span><span class="cwhy"><b>Cut:</b> very hard &middot; no quick demo &middot; post-hackathon work.</span></div>
+        <div class="cut-c"><span class="cname">Signed verification certificate</span><span class="cwhy"><b>Optional:</b> end of day only, if ahead &mdash; a downloadable receipt has some polish.</span></div>
       </div>
-      <div class="cut-grid">
-        <div class="cutc"><span class="cc-tag">Maple Ledger §8 · §18</span><span class="cc-name">Transparency log (Rekor / Trillian / Merkle)</span><span class="cc-why"><b>Cut:</b> not in primer scope · no visual demo · replay handled by a simple uniqueness set.</span></div>
-        <div class="cutc"><span class="cc-tag">Maple Ledger §5 · §12</span><span class="cc-name">DIDs · Verifiable Credentials · GCKey</span><span class="cc-why"><b>Cut:</b> the registry is handed to us mocked · we just look up keyid → publicKey.</span></div>
-        <div class="cutc"><span class="cc-tag">Maple Ledger §5.3</span><span class="cc-name">FIDO2 / WebAuthn / HSM hardware signing</span><span class="cc-why"><b>Cut:</b> WebAuthn is a time sink · software signing + a key icon demos the same idea.</span></div>
-        <div class="cutc"><span class="cc-tag">Maple Ledger §6.1 · §10</span><span class="cc-name">RFC 3161 trusted timestamps</span><span class="cc-why"><b>Cut from build</b> · no demo value · but spend 15 min knowing how to verify one, in case the schema includes it.</span></div>
-        <div class="cutc"><span class="cc-tag">Maple Ledger §15</span><span class="cc-name">Bulletproofs · zk-range proofs · threshold decryption</span><span class="cc-why"><b>Cut:</b> very hard · no quick demo · post-hackathon work.</span></div>
-        <div class="cutc"><span class="cc-tag">Maple Ledger §13.3</span><span class="cc-name">Signed verification certificate</span><span class="cc-why"><b>Optional:</b> end of day only, if ahead · a downloadable receipt has some demo polish.</span></div>
-      </div>
-      <div class="foot">
-        <svg class="ico ico-md f-ico"><use href="#i-shield"/></svg>
-        <span>Every cut still lives in the <b>Maple Ledger design doc</b> as the production vision — name them in the pitch as "what production does." We just don't spend a single build-hour on them on the day.</span>
-      </div>
+      <div class="foot"><span class="fi">&#9656;</span><span>Every cut still lives in the <b>design doc</b> as the production vision &mdash; name them in the pitch as "what production does." We just spend zero build-hours on them on the day.</span></div>
     </div>
   </section>
 
-  <!-- ===== Slide 12 · Adapter boundary ===== -->
+  <!-- ===== 11 · Adapter boundary ===== -->
   <section class="slide">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <span class="snum">12</span>
-        <div class="sh-tx">
-          <div class="kicker">5.30 readiness · the plug-in boundary</div>
-          <h2>Six adapters absorb <span class="g">the event-day spec.</span></h2>
-        </div>
+    <div class="inner">
+      <div class="head"><span class="snum">16</span><div class="htx">
+        <div class="kicker">Before 5.30 &middot; the plug-in boundary</div>
+        <h2>Six adapters absorb <span class="a">the event-day spec.</span></h2>
+      </div></div>
+      <p class="lead">The full schema, serialization rules and registry arrive at kickoff. Everything uncertain hides behind these six signatures. We <b>freeze the signatures now</b>; on 5.30 we rewrite only the <b>insides</b>. The core, graph, math and UI consume adapter outputs &mdash; they don't change.</p>
+      <div class="adg">
+        <div class="ad"><span class="sig">validate(obj) &rarr; Result</span><span class="add">Swap the <b>schema file</b>.</span></div>
+        <div class="ad"><span class="sig">canonicalize(obj) &rarr; bytes</span><span class="add">DSSE / JCS / custom &mdash; the <b>signing input</b>.</span></div>
+        <div class="ad"><span class="sig">verify(bytes, sig, key) &rarr; bool</span><span class="add">Call the <b>reference library</b>.</span></div>
+        <div class="ad"><span class="sig">resolveKey(keyid) &rarr; publicKey</span><span class="add">Read the <b>registry shape</b>.</span></div>
+        <div class="ad"><span class="sig">getCosts(att) &rarr; CostBreakdown</span><span class="add">Map cost fields &rarr; <b>integer cents</b>.</span></div>
+        <div class="ad"><span class="sig">findLastST(chain) &rarr; Attestation</span><span class="add">Whatever the spec's <b>substantial-transformation rule</b> turns out to be.</span></div>
       </div>
-      <p class="lead">The full schema, serialization rules and registry arrive at 9 AM on event day. Everything uncertain hides behind these six function signatures. We freeze the <b>signatures</b> now; on 5.30 we rewrite only the <b>insides</b>.</p>
-      <div class="adapt-grid">
-        <div class="adapt"><span class="ad-sig">validate(obj) → Result</span><span class="ad-d">Swap the <b>schema file</b>.</span></div>
-        <div class="adapt"><span class="ad-sig">canonicalize(obj) → bytes</span><span class="ad-d">DSSE / JCS / custom — <b>signing input</b>.</span></div>
-        <div class="adapt"><span class="ad-sig">verify(bytes, sig, key) → bool</span><span class="ad-d">Call the <b>reference library</b>.</span></div>
-        <div class="adapt"><span class="ad-sig">resolveKey(keyid) → publicKey</span><span class="ad-d">Read the <b>registry shape</b>.</span></div>
-        <div class="adapt"><span class="ad-sig">getCosts(att) → CostBreakdown</span><span class="ad-d">Map the <b>cost fields</b> → integer cents.</span></div>
-        <div class="adapt"><span class="ad-sig">findLastST(chain) → Attestation</span><span class="ad-d">Whatever the spec's <b>ST rule</b> turns out to be.</span></div>
-      </div>
-      <div class="foot">
-        <svg class="ico ico-md f-ico"><use href="#i-plug"/></svg>
-        <span>If the boundary is right, <b>5.30 morning is 1–2 hours of mechanical translation, not design.</b> The core, the graph, the math and the UI all consume adapter outputs — they don't change. The event is a single day, so all the design pressure is on <b>the prep window before 5.30.</b></span>
-      </div>
+      <div class="foot"><span class="fi">&#9656;</span><span>If the boundary is right, <b>5.30 morning is 1&ndash;2 hours of mechanical translation, not design.</b> The event is a single day, so all the design pressure lands on the prep window before it.</span></div>
     </div>
   </section>
 
-  <!-- ===== Slide 13 · Closing ===== -->
-  <section class="slide closing-slide">
-    <div class="slide-inner">
+  <!-- ===== 12 · Closing ===== -->
+  <section class="slide close">
+    <div class="inner">
       <div class="kicker">The one rule</div>
-      <div class="cl-big">Build what's <span class="g">scored.</span> Polish what's <span class="g">demoed.</span> Cut what's neither.</div>
-      <div class="cl-sub">P0 and P1 win the harness. P2 carries the room. P3 is the encore — and only if the first three are done. Everything in the cut pile stays in the pitch as production roadmap and out of the single-day build.</div>
-      <div class="cl-mantra">"The bonus is the bonus, not the wage. Earn the wage first."</div>
-      <div class="cl-meta">
-        <span class="dot"></span>
-        <span>TrueNorth · RedTeam DefTech Ottawa · 30 May 2026</span>
-      </div>
+      <div class="big">Build what's <span class="a">scored.</span> Polish what's <span class="a">demoed.</span> Cut what's neither.</div>
+      <div class="csub">P0 and P1 win the harness. P2 carries the room. P3 is the encore &mdash; and only if the first three are done. Everything in the cut pile stays in the pitch as production roadmap, and out of the single-day build.</div>
+      <div class="mantra">"The bonus is the bonus, not the wage. Earn the wage first."</div>
+      <div class="cmeta"><span class="dot"></span><span>TrueNorth &middot; RedTeam DefTech Ottawa &middot; 30 May 2026</span></div>
     </div>
   </section>
 
-</div>
+</div></div>
 
 <div class="nav">
-  <button class="nav-btn" id="prev" aria-label="Previous slide">←</button>
-  <div class="nav-counter"><span class="cur" id="curS">01</span> / <span id="totS">13</span></div>
-  <button class="nav-btn" id="next" aria-label="Next slide">→</button>
-</div>
-
+  <button class="nav-btn" id="prev" aria-label="Previous">&larr;</button>
+  <div class="counter"><span class="cur" id="curS">01</span> / <span id="totS">12</span></div>
+  <button class="nav-btn" id="next" aria-label="Next">&rarr;</button>
 </div>
 
 <script>
@@ -755,49 +699,59 @@
   const slides = Array.from(document.querySelectorAll('.slide'));
   const total = slides.length;
   let idx = 0;
-
-  const curS  = document.getElementById('curS');
-  const totS  = document.getElementById('totS');
-  const pbar  = document.getElementById('pbar');
-  const next  = document.getElementById('next');
-  const prev  = document.getElementById('prev');
-
+  const curS = document.getElementById('curS');
+  const totS = document.getElementById('totS');
+  const pbar = document.getElementById('pbar');
   totS.textContent = String(total).padStart(2,'0');
 
   function render(){
     slides.forEach((s,i)=> s.classList.toggle('active', i===idx));
     curS.textContent = String(idx+1).padStart(2,'0');
-    pbar.style.width = ((idx+1) / total * 100) + '%';
+    pbar.style.width = ((idx+1)/total*100) + '%';
     if (slides[idx]) slides[idx].scrollTop = 0;
   }
+  function go(d){ idx = Math.max(0, Math.min(total-1, idx+d)); render(); }
 
-  function go(d){
-    idx = Math.max(0, Math.min(total-1, idx+d));
-    render();
-  }
-
-  next.addEventListener('click', ()=> go(+1));
-  prev.addEventListener('click', ()=> go(-1));
-
-  document.addEventListener('keydown', (e)=>{
-    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); go(+1); }
-    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
-    else if (e.key === 'Home') { e.preventDefault(); idx = 0; render(); }
-    else if (e.key === 'End')  { e.preventDefault(); idx = total-1; render(); }
+  document.getElementById('next').addEventListener('click', ()=> go(+1));
+  document.getElementById('prev').addEventListener('click', ()=> go(-1));
+  document.addEventListener('keydown', e=>{
+    if (e.key==='ArrowRight' || e.key==='PageDown' || e.key===' '){ e.preventDefault(); go(+1); }
+    else if (e.key==='ArrowLeft' || e.key==='PageUp'){ e.preventDefault(); go(-1); }
+    else if (e.key==='Home'){ e.preventDefault(); idx=0; render(); }
+    else if (e.key==='End'){ e.preventDefault(); idx=total-1; render(); }
   });
-
-  let touchStartX = null;
-  document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, {passive:true});
-  document.addEventListener('touchend', e => {
-    if (touchStartX === null) return;
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    if (Math.abs(dx) > 40) go(dx < 0 ? +1 : -1);
-    touchStartX = null;
+  let tx=null;
+  document.addEventListener('touchstart', e=>{ tx=e.touches[0].clientX; }, {passive:true});
+  document.addEventListener('touchend', e=>{
+    if (tx===null) return;
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx)>40) go(dx<0?+1:-1);
+    tx=null;
   }, {passive:true});
-
   render();
 })();
 </script>
-
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  window.addEventListener('load', function(){
+    if (!window.mermaid) return;
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'base',
+      themeVariables: {
+        fontFamily: '-apple-system,Segoe UI,Helvetica,Arial,sans-serif',
+        fontSize: '13px',
+        primaryColor: '#ffffff',
+        primaryTextColor: '#141414',
+        primaryBorderColor: '#141414',
+        lineColor: '#141414',
+        tertiaryColor: '#ffffff',
+        clusterBkg: '#faf9f6',
+        clusterBorder: 'rgba(20,20,20,.18)'
+      }
+    });
+    mermaid.run({ querySelector: '.mermaid' });
+  });
+</script>
 </body>
 </html>

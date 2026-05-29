@@ -41,37 +41,43 @@ Every milestone carries two tags:
 1. **Build what's scored. Polish what's demoed. Cut what's neither.**
    P0 + P1 win the harness. P2 carries the room. P3 is the encore.
 
-2. **Don't start a lower tier until the tier above has passed its "Done when".**
-   The bonus is the bonus, not the wage. Earn the wage first.
+2. **On the day, work the critical path in strict priority order — and never start P3 until the core passes its "Done when".**
+   The bonus is the bonus, not the wage. Earn the wage first. *(This governs day-of triage and the P3 gate. In the prep window before 5.30, lanes run in parallel — P0/P1/P2 logic is all built on mock data; see `pre-event-checklist-en.md`.)*
 
 3. **Design what we own; don't guess what the organizer dictates.**
-   The attestation wire-schema, registry format, and signing rules arrive at 9 AM on event day. Our internal model, our algorithm, and our adapters are ours — design those now.
+   What arrives only at kickoff: the attestation wire-schema, the registry format, the signing/serialization rules, **how "substantial transformation" is identified**, and **the cost-flow / partial-consumption rule** — the last two are the most dangerous, because they change the verdict. Our internal model, our algorithm, and our adapters are ours — design those now, and isolate every unknown behind the six adapters (see `pre-event-checklist-en.md`).
 
 ---
 
 ## Timeline at a glance
 
-### Part 1 — Before 5.30 (the prep window — *do as much as humanly possible here*)
+### Part 1 — Before 5.30 (the prep window — *build as much as humanly possible here*)
 
-| Phase | Focus |
-|---|---|
-| **Phase 0 — Get ready** | Skeleton, adapters, internal model, algorithm flowchart, UI shells, de-risk spikes |
+**Not just Phase 0 scaffolding.** The baseline: *everything behind the adapter boundary is built and tested on mock data before the event.* Whatever is spec-independent gets implemented now; only the spec translation and the day-of unknowns wait. The exact before / skeleton / on-the-day split is the lane model in `pre-event-checklist-en.md` — this table is the summary.
 
-### Part 2 — On 5.30 (single competition day, ~5 hours, start to finish)
+| Built before 5.30 | Milestones | On what |
+|---|---|---|
+| **Phase 0 — Get ready** | M0.1–M0.7 | Skeleton, 6 adapter stubs, internal model, flowchart, UI shells, QR-in-browser, de-risk spikes |
+| **Phase 2 logic (P0)** | M2.2, M2.3 | Chain walk / graph + content math & verdict — on mock data, hand-calc asserted |
+| **Phase 3 logic (P1)** | M3.1, M3.2, M3.3 | Structural + precedence, mass-balance, anomaly scoring — on mock data |
+| **Phase 4 (P2)** | M4.1, M4.2 | Supplier + purchaser rooms wired to a mock backend |
+| **Skeletons** | M2.1, M6.2 | Signature/schema verify with our own keys; Compose + internal self-test |
+| **Demo prep** | M6.1, M6.3 | Demo script draft, pitch deck |
 
-No fixed schedule — just **strict priority order**. Finish the one above before starting the next:
+### Part 2 — On 5.30 (single competition day, ~5 hours)
 
-| Order | Phase | Focus |
+The day is **translate → swap → wire → submit**, not build-from-scratch — because Part 1 already built the logic on mock data. Strict priority order on the critical path; never start P3 until the core passes (golden rule 2).
+
+| Order | On the day | Focus |
 |---|---|---|
 | 0 | **Read the spec** | Full schema, registry, reference library, sample data drop at the start |
-| 1 | **Phase 1 — Translate** | Plug the real spec into our adapters — blocks everything, so first and fast |
-| 2 | **Phase 2 — Scored core (P0)** | Verify + walk chain + compute % + verdict |
-| 3 | **Phase 3 — Catch the forger (P1)** | Integrity checks + mass-balance + anomaly detection |
-| 4 | **Phase 4 — Interfaces (P2)** | Wire the pre-built UI shells to the live backend |
-| 5 | **Phase 6 — Ship** | Demo script, Docker Compose, submit — leave a hard stop for this |
-| last | **Phase 5 — Bonus (P3)** | Only if a lane finishes early |
+| 1 | **Translate (M1.0)** | Fill the 6 adapter bodies + confirm the 4 unknowns — blocks everything, first and fast |
+| 2 | **Swap insides** | Real reference lib / serialization / registry into M2.1; the pre-built pipeline lights up on the real sample chain |
+| 3 | **Wire interfaces (P2)** | Point the pre-built UI shells at the live backend (a base-URL swap) |
+| 4 | **Ship (Phase 6)** | Re-run self-test, Docker Compose, submit — leave a hard stop for this |
+| last | **Bonus (P3)** | Only if a lane finishes early |
 
-> **Lanes run in parallel.** The critical path is: *translate → cost math → integrity checks → submit.* While Lane 2/3 build the backend, Lane 1 wires the UI shells that were already built before 5.30. With only ~5 hours, **assume you will not reach P3 at all** — the goal is a correct, packaged, submitted P0+P1 with a working demo.
+> **Lanes run in parallel in both windows.** Critical path on the day: *translate → pipeline lights up → wire UI → package → submit.* With only ~5 hours, **assume you will not reach P3 at all** — the goal is a correct, packaged, submitted P0+P1 with a working demo. **If Part 1 was done well, the day is mostly mechanical.**
 
 ---
 
@@ -105,7 +111,7 @@ No fixed schedule — just **strict priority order**. Finish the one above befor
 
 ---
 
-# Part 1 · Phase 0 — Get ready (before 5.30)
+# Phase 0 — Get ready (the foundation · all before 5.30)
 
 **Goal:** be ready to *plug in* on event day, not ready to *design* on event day. Everything here is behind the adapter boundary, so the unknown event-day spec can't invalidate it. **Because the build is a single day, this prep window is not optional padding — it is where most of the system gets designed.** Whatever isn't scaffolded before 5.30 will be rushed on 5.30.
 
@@ -147,9 +153,13 @@ No fixed schedule — just **strict priority order**. Finish the one above befor
 
 ---
 
-# Part 2 — On 5.30 (single day, start to finish)
+# The build — Phases 1–6 (grouped by phase, not by clock)
+
+> **Definitions vs scheduling.** The milestones below (M1–M6) are grouped by phase and priority — that's *what each is and how important it is*. Their *scheduling* follows `pre-event-checklist-en.md`: the spec-independent **logic** of Phases 2–4 is built **before 5.30 on mock data** (Lane A/B). What genuinely happens *on the day* is narrower — translate the spec into the adapters (M1.0), swap the real crypto/registry into M2.1, wire the UI shells to the live backend, then package and submit. Read each milestone below as "the work it defines," not "work that only starts on 5.30."
 
 # Phase 1 — Translate
+
+*When — **on the day** (Lane C): the irreducible spec-plugging; do it first, it blocks everything.*
 
 ### M1.0 — Adapter translation vs real spec 🔴 🟨
 **What:** The full spec drops at kickoff. Open it and rewrite the *insides* of the six adapters to match: real field names, real serialization, real registry format, real cost fields, the real "substantial transformation" rule. Don't change the adapter signatures. Swap mock data for the provided sample chains.
@@ -160,6 +170,8 @@ No fixed schedule — just **strict priority order**. Finish the one above befor
 ---
 
 # Phase 2 — The scored core (P0) — "Can a buyer trust it?"
+
+*When — **logic built before 5.30 on mock data** (M2.2/M2.3 Lane A, M2.1 Lane B skeleton); the real reference lib / serialization / registry swap in on the day.*
 
 This is what the harness grades first. Get it right before anything else.
 
@@ -182,6 +194,8 @@ This is what the harness grades first. Get it right before anything else.
 ---
 
 # Phase 3 — Catch the forger (P1) — "What if the data lies?"
+
+*When — **built before 5.30 on mock data** (Lane A): the reason codes, precedence, mass-balance and anomaly scoring are all ours.*
 
 The second scored dimension. Two halves: deterministic checks (crypto for integrity) and probabilistic scoring (AI for plausibility).
 
@@ -206,6 +220,8 @@ The second scored dimension. Two halves: deterministic checks (crypto for integr
 
 # Phase 4 — The interfaces (P2) — "Required, and they carry the demo"
 
+*When — **built before 5.30 against a mock backend** (Lane A); pointed at the live backend on the day (a base-URL swap).*
+
 Not harness-scored, but a broken demo sinks the pitch. On the day this is *wiring*, not building — the shells were made in Phase 0, so Lane 1 connects them to the live backend as it comes online.
 
 ### M4.1 — Supplier room (issue + sign) 🟡 🟨
@@ -221,6 +237,8 @@ Not harness-scored, but a broken demo sinks the pitch. On the day this is *wirin
 ---
 
 # Phase 5 — Bonus (P3) — "Only if you're ahead"
+
+*When — **on the day, only if a lane finishes early** (the P3 gate, golden rule 2).*
 
 Zero harness points. Pure demo and pitch. **Do not touch until the core passes the happy path + all five test categories.** On a single-day event, be honest: you will probably not reach these. Pick *at most one* (M5.2 or M5.3) if a lane finishes early, and keep it small.
 
@@ -244,6 +262,8 @@ Zero harness points. Pure demo and pitch. **Do not touch until the core passes t
 ---
 
 # Phase 6 — Ship
+
+*When — demo script & deck **drafted before 5.30** (M6.1/M6.3); Compose + internal self-test **skeletoned before** (M6.2 Lane B); final package + the **official** self-test run on the day.*
 
 Leave a hard stop for this near the end. A working submission that scores beats a brilliant one that never got packaged. Start packaging while the last features are still landing.
 

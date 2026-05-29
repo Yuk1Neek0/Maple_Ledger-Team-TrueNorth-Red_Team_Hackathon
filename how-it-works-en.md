@@ -57,6 +57,8 @@ This is the most important property in the whole system:
 
 If anyone changes the document after the seal is pressed, the seal no longer matches. If anyone tries to forge a seal without the private key, the forgery is mathematically detectable.
 
+**A common misconception worth clearing up:** signing is *not* "hashing the document together with the private key." That would be symmetric — anyone who could verify a signature could also forge one, because they'd need the private key to check it. The whole point of B2 is that **two different keys do two different jobs**: the *private* key is the only thing in the world that can *create* a valid signature for a given fingerprint, but the *public* key is enough to *check* one. Creating and verifying are separate mathematical operations, paired by elliptic-curve math (Ed25519, in our case). That asymmetry is why Apex can publish their public key to the whole internet and still be the only party able to sign as Apex.
+
 ### 2.3 The signed claim (an "attestation")
 
 An **attestation** is one small data record that says:
