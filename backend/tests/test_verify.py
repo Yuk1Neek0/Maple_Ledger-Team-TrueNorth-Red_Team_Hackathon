@@ -6,7 +6,7 @@ from app import adapters
 from app.chain import SupplyChain, build_chain
 from app.models import Attestation, Designation, InputRef, Node, Output, Reason
 from app.registry import load_registry
-from app.verify import Verifier
+from app.verify import Verifier, verify_root
 
 FIX = Path(__file__).parent / "fixtures"
 REGISTRY = load_registry()
@@ -67,6 +67,21 @@ def test_overdraw_mass_balance():
     _, r = run("overdraw.json")
     assert Reason.MASS_BALANCE in reasons(r)
     assert r.designation == Designation.NONE
+
+
+def test_verify_root_scopes_to_reachable():
+    """Regression: a shared in-memory store must not let attestations from one
+    product's chain contaminate another's (e.g. a shared raw-material lot
+    looking over-consumed). verify_root scopes to the queried root's subgraph."""
+    store = {}
+    for name in ("happy_path.json", "product_of_canada.json", "overdraw.json"):
+        fx = json.loads((FIX / name).read_text(encoding="utf-8"))
+        for obj in fx["attestations"]:
+            store[adapters.compute_hash(adapters.attestation_from_dict(obj))] = obj
+    pc = json.loads((FIX / "product_of_canada.json").read_text(encoding="utf-8"))
+    r = verify_root(store, REGISTRY, pc["root_hash"])
+    assert r.designation == Designation.PRODUCT_OF_CANADA
+    assert Reason.MASS_BALANCE not in {a.reason for a in r.anomalies}
 
 
 def test_cycle_guard():

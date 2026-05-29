@@ -104,8 +104,15 @@ class Verifier:
 
 
 def verify_root(store: dict[str, dict], registry: dict, root_hash: str) -> VerificationResult:
+    # The store is a shared pool of every attestation ever submitted. Scope the
+    # chain to what is reachable from this root, else mass-balance / anomaly /
+    # cost would span unrelated products (e.g. a shared raw-material lot would
+    # look over-consumed across chains).
     atts = [adapters.attestation_from_dict(v) for v in store.values()]
-    chain = build_chain(atts, root_hash)
+    full = build_chain(atts, root_hash)
+    reachable = full.reachable()
+    scoped = [full.by_hash[h].attestation for h in reachable]
+    chain = build_chain(scoped, root_hash)
     return Verifier(registry).verify(chain)
 
 
