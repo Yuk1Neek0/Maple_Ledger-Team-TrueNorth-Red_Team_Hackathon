@@ -65,5 +65,7 @@ def test_verify_returns_locked_shape():
     r = client.get(f"/verify/{fx['root_hash']}").json()
     assert set(r.keys()) == {
         "designation", "canadian_pct", "total_cost_cents",
-        "canadian_cost_cents", "cost_by_country", "anomalies",
+        "canadian_cost_cents", "cost_by_country", "anomalies", "graph",
     }
+    # graph topology travels with the verdict (WS2.1): nodes + edges present
+    assert set(r["graph"].keys()) == {"nodes", "edges"}

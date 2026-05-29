@@ -97,3 +97,56 @@ def test_cycle_guard():
     }
     order, has_cycle = SupplyChain(by_hash, "A").topo_walk()
     assert has_cycle and order == []
+
+
+def test_replay_detected():
+    _, r = run("replay.json")
+    assert Reason.REPLAY_DETECTED in reasons(r)
+
+
+def test_temporal_inversion_is_advisory():
+    _, r = run("temporal.json")
+    assert Reason.TEMPORAL_INVERSION in reasons(r)
+    # advisory only — it must not change the verdict
+    assert r.designation == Designation.PRODUCT_OF_CANADA
+
+
+def test_duplicate_input_ref_broken_link():
+    _, r = run("duplicate_input.json")
+    assert Reason.BROKEN_LINK in reasons(r)
+
+
+def test_subtree_percent_root_matches_chain_pct():
+    fx = json.loads((FIX / "happy_path.json").read_text(encoding="utf-8"))
+    atts = [adapters.attestation_from_dict(o) for o in fx["attestations"]]
+    chain = build_chain(atts, fx["root_hash"])
+    r = Verifier(REGISTRY).verify(chain)
+    root = chain.by_hash[fx["root_hash"]]
+    assert round(root.subtree_percent, 3) == round(r.canadian_pct, 3)
+
+
+def test_self_reference_is_cycle():
+    a = Attestation("SUP-A", Output("a", 1, "u"), (InputRef("A", 1),),
+                    10, 10, "CA", True, "t", "sig")
+    by_hash = {"A": Node(a, "A", input_hashes=["A"], consumer_hashes=["A"])}
+    order, has_cycle = SupplyChain(by_hash, "A").topo_walk()
+    assert has_cycle and order == []
+
+
+def test_anomaly_is_advisory_only():
+    """Inflated-cost node: valid signature, flagged ANOMALY, verdict unchanged
+    ('crypto for integrity, AI for plausibility')."""
+    _, r = run("anomaly.json")
+    assert Reason.ANOMALY in reasons(r)
+    assert r.designation == Designation.PRODUCT_OF_CANADA
+
+
+def test_criticality_overlay_advisory():
+    """The criticality overlay annotates nodes but never changes the verdict."""
+    fx = json.loads((FIX / "happy_path.json").read_text(encoding="utf-8"))
+    atts = [adapters.attestation_from_dict(o) for o in fx["attestations"]]
+    chain = build_chain(atts, fx["root_hash"])
+    r = Verifier(REGISTRY).verify(chain)
+    root = chain.by_hash[fx["root_hash"]]
+    assert root.annotations["criticality"]["component_class"] == "critical"  # root ST
+    assert r.designation == Designation.MADE_IN_CANADA

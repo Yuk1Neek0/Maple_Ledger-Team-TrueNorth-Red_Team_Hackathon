@@ -16,6 +16,7 @@ import jsonschema
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
+from . import spec
 from .models import Attestation, InputRef, Output
 
 _SCHEMA_PATH = Path(__file__).resolve().parents[2] / "schema" / "attestation.schema.json"
@@ -81,12 +82,28 @@ def validate(obj: dict) -> tuple[bool, str | None]:
         return False, f"MALFORMED: {e.message}"
 
 
-def canonicalize(obj: dict) -> bytes:
-    """Deterministic bytes of the payload. MOCK: RFC-8785-style sorted-key JSON.
-    SWAP on the day: DSSE/PAE if the reference library uses it."""
+def _jcs_bytes(obj: dict) -> bytes:
+    """RFC-8785-style canonical JSON bytes: sorted keys, compact, UTF-8."""
     return json.dumps(
         obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False
     ).encode("utf-8")
+
+
+def _pae(payload_type: str, body: bytes) -> bytes:
+    """DSSE Pre-Authentication Encoding — the exact bytes signed under a DSSE
+    envelope: b"DSSEv1" SP LEN(type) SP type SP LEN(body) SP body (lengths ASCII)."""
+    t = payload_type.encode("utf-8")
+    return b"DSSEv1 %d %s %d %s" % (len(t), t, len(body), body)
+
+
+def canonicalize(obj: dict) -> bytes:
+    """The exact bytes that get signed/verified. Selectable via spec.SERIALIZATION:
+    "jcs" (default, RFC-8785-style) or "dsse" (DSSE/PAE over the JCS body — the
+    likely event-day envelope). Day-of switch is one constant in spec.py."""
+    body = _jcs_bytes(obj)
+    if spec.SERIALIZATION == "dsse":
+        return _pae(spec.DSSE_PAYLOAD_TYPE, body)
+    return body
 
 
 def verify(message: bytes, signature: bytes, public_key: Ed25519PublicKey) -> bool:
@@ -113,14 +130,12 @@ def get_costs(att: Attestation) -> tuple[int, int, str]:
     return att.materials_cents, att.labour_cents, att.work_country
 
 
-def find_last_st(chain) -> "object | None":
-    """Node of the last substantial transformation. MOCK: the root if its flag is
-    set, else the flagged node nearest the root. SWAP on the day: spec's ST rule."""
+def _st_by_flag(chain):
+    """Nearest-to-root node whose is_substantial_transformation flag is set."""
     root = chain.by_hash.get(chain.root_hash)
     if root is not None and root.attestation.is_substantial_transformation:
         return root
-    # BFS from root toward leaves; first flagged node wins.
-    seen, queue = set(), [chain.root_hash]
+    seen, queue = set(), [chain.root_hash]   # BFS root -> leaves; first flagged wins
     while queue:
         h = queue.pop(0)
         if h in seen:
@@ -133,3 +148,36 @@ def find_last_st(chain) -> "object | None":
             return node
         queue.extend(node.input_hashes)
     return root
+
+
+def _st_root(chain):
+    """Spec variant: the final assembler (root) is always the last ST point."""
+    return chain.by_hash.get(chain.root_hash)
+
+
+def _st_by_activity(chain):
+    """Spec variant: nearest-to-root node whose overlay `activity` is an ST
+    activity. The day-of adapter populates node.annotations['activity']."""
+    seen, queue = set(), [chain.root_hash]
+    while queue:
+        h = queue.pop(0)
+        if h in seen:
+            continue
+        seen.add(h)
+        node = chain.by_hash.get(h)
+        if node is None:
+            continue
+        if node.annotations.get("activity") in spec.ST_ACTIVITIES:
+            return node
+        queue.extend(node.input_hashes)
+    return chain.by_hash.get(chain.root_hash)
+
+
+_ST_STRATEGIES = {"flag": _st_by_flag, "root": _st_root, "activity": _st_by_activity}
+
+
+def find_last_st(chain) -> "object | None":
+    """Node of the last substantial transformation — the single biggest event-day
+    unknown. Strategy selectable via spec.ST_STRATEGY (default 'flag'). SWAP on
+    the day: confirm the rule, set the constant; the variants are pre-staged."""
+    return _ST_STRATEGIES.get(spec.ST_STRATEGY, _st_by_flag)(chain)

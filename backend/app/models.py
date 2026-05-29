@@ -52,6 +52,7 @@ class Reason(str, Enum):            # precedence order top->bottom (§3.3)
     BROKEN_LINK = "BROKEN_LINK"
     CYCLE = "CYCLE"
     MASS_BALANCE = "MASS_BALANCE"   # quantity overdraw — HARD reject
+    TEMPORAL_INVERSION = "TEMPORAL_INVERSION"  # input later than consumer — advisory
     ANOMALY = "ANOMALY"             # advisory only, never rejects
 
 
@@ -73,6 +74,8 @@ class Node:
     signer_known: bool = False
     status: Status = Status.OK
     reason: Reason | None = None
+    subtree_percent: float = 0.0    # display-only: CA% over this node's reachable subtree
+    annotations: dict = field(default_factory=dict)  # overlay layer; never read in the verdict path
     anomalies: list[Anomaly] = field(default_factory=list)
 
 
@@ -90,3 +93,4 @@ class VerificationResult:
     canadian_cost_cents: int
     cost_by_country: dict[str, int]
     anomalies: list[Anomaly]
+    graph: dict | None = None      # {nodes,edges} topology for the UI; never feeds the verdict

@@ -1,8 +1,8 @@
 {
-  "description": "root field edited after signing",
-  "root_hash": "8d3b6b4811e6fd82126165f3d50f280a00aa9261393ae0ec2399c621cba0896f",
+  "description": "valid signature but inflated (~5x) labour cost",
+  "root_hash": "5303e4aadd97aadb8115c2b052e753b17d2d06fec1ac0e64c8d3f2354259427e",
   "expected": {
-    "reason": "SIGNATURE_INVALID"
+    "reason": "ANOMALY"
   },
   "attestations": [
     {
@@ -53,11 +53,11 @@
         }
       ],
       "materials_cents": 0,
-      "labour_cents": 300,
+      "labour_cents": 1500,
       "work_country": "CA",
       "is_substantial_transformation": true,
       "timestamp": "2026-05-02T08:00:00Z",
-      "signature": "BRG8JlENPL5+faSz4hmGPNNzGIYrRjT2MYnJDQj+0krD4ExH3AULki1gnzT55zmin1MTnOFWE0FTH4I8EP3QDw=="
+      "signature": "liO+2On44e1orHxfkGJXOsG56i5v6BkCTrO3slrW0IBVtVH0FAVD78vMe+ZnMJ6SClJXnSwhNdgv+56LyqPNDQ=="
     },
     {
       "supplier_id": "SUP-DRONE",
@@ -68,16 +68,16 @@
       },
       "inputs": [
         {
-          "attestation_hash": "1b4448a6cd3161c0c15a6e058887553d7181a31cb0ef6bdce3ce8b99aeb07071",
+          "attestation_hash": "10acde21a5d5ef6ebde31dec9b509e8d79c3192aff9975e23b2b6ed5c21ca2e6",
           "quantity_used": 1
         }
       ],
-      "materials_cents": 99999,
+      "materials_cents": 20,
       "labour_cents": 400,
       "work_country": "CA",
       "is_substantial_transformation": true,
       "timestamp": "2026-05-03T08:00:00Z",
-      "signature": "rQSOdE9MBr3we89SLx4MJTlXdpOEW4xw1HRS1OUfMDOKQi6IS/IkZuRAx8tdYKBywJpl6pi8c10HLSZWa4UwBA=="
+      "signature": "jgGdzdWpNRqm2rjXbfQ5uVne/aMv+ekKMzsVuSJzWAP5iicsHNLcD28Ors2AZcHrRZsOmvQSqx2919E3RYnBDg=="
     }
   ]
 }

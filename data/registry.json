@@ -1,18 +1,18 @@
 {
   "SUP-ALU": {
-    "public_key": "0e8febf5005ac4064561aa4b4ef2cb4f4b5f43b08c2a719e844bc8a43a5631ee",
+    "public_key": "6509beb7d053dd519e1aa819fd3c64551c578f99bcb0f75e1c5ec77140f02bcc",
     "verified": true
   },
   "SUP-BEAR": {
-    "public_key": "2a811d379f0add6747b004175eda8eaa757afd0e84909861b1c0bfbcf014a3bc",
+    "public_key": "5b19234a0c8307d17052e2c18e88f268c4daa6c7a3d536affba13463c7f871af",
     "verified": true
   },
   "SUP-MOTOR": {
-    "public_key": "9d60f6c24bb53f2550a8eb38c07af52cc651f73f95d2df57c96daf5b33f73979",
+    "public_key": "049d9db4187a0d8d2cbeb33fea48fa670ffb7e58b7d6648bd46aaa052dbf4da3",
     "verified": true
   },
   "SUP-DRONE": {
-    "public_key": "8ff78d283e62798f52bd7f02957cc76e321763d6c430e96030b9f61a20e57ff2",
+    "public_key": "7951412bc99eea0b5e69a4c72656e6401907701320b86cba31f8ba3c4a0979c4",
     "verified": true
   }
 }

@@ -6,6 +6,15 @@ services:
     container_name: verifier-backend
     ports:
       - "8000:8000"
+    environment:
+      # Advisory AI (WS5) — optional. Put ANTHROPIC_API_KEY in a root .env file
+      # (gitignored) to enable /draft and /ask; absent = features return 503.
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - ML_CLAUDE_MODEL=${ML_CLAUDE_MODEL:-claude-haiku-4-5-20251001}
+      # Adapter variant selectors (event-day swap; defaults = current behaviour).
+      - ML_SERIALIZATION=${ML_SERIALIZATION:-jcs}
+      - ML_ST_STRATEGY=${ML_ST_STRATEGY:-flag}
+      - ML_COST_FLOW=${ML_COST_FLOW:-fraction}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 10s

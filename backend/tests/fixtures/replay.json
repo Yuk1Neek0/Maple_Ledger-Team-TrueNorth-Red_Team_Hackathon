@@ -1,8 +1,8 @@
 {
-  "description": "root field edited after signing",
-  "root_hash": "8d3b6b4811e6fd82126165f3d50f280a00aa9261393ae0ec2399c621cba0896f",
+  "description": "two attestations share (issuer, output serial)",
+  "root_hash": "6006d64af8b629f4e3a3c88374c951207c895b8f5ed024ba506d8dea36c9e7c7",
   "expected": {
-    "reason": "SIGNATURE_INVALID"
+    "reason": "REPLAY_DETECTED"
   },
   "attestations": [
     {
@@ -21,19 +21,19 @@
       "signature": "BbK6Y7WJQ3R8WPh94bVxLg9+6ejkI/dUOV3wRCbjOb/L2OzqvlRa8bjy49YyQN1EMt95ta/jMrybpdjEyd9wBw=="
     },
     {
-      "supplier_id": "SUP-BEAR",
+      "supplier_id": "SUP-ALU",
       "output": {
-        "product_id": "steel_bearings",
+        "product_id": "raw_aluminum",
         "quantity": 1,
-        "unit": "pcs"
+        "unit": "kg"
       },
       "inputs": [],
-      "materials_cents": 40,
-      "labour_cents": 10,
-      "work_country": "CN",
+      "materials_cents": 501,
+      "labour_cents": 200,
+      "work_country": "CA",
       "is_substantial_transformation": false,
       "timestamp": "2026-05-01T08:00:00Z",
-      "signature": "il5PZNuzcohfCx5WWRIp81ToR5oRPnDDMtMmRUsIZlicWg1GbSTuo36fzn92DOcajC9rMrD/ykZEMyRuygXnAQ=="
+      "signature": "v2IjBJghI6vgupnNAznIBMV14zsVCZ18m3O71DtnxaDLQb06qFkFxWWKesxm4QIp5g7YWnnl3dRiBF8xWyoBBQ=="
     },
     {
       "supplier_id": "SUP-MOTOR",
@@ -48,7 +48,7 @@
           "quantity_used": 1
         },
         {
-          "attestation_hash": "b738ffd09ca2675ad06a8de900399f789ca4c2a3c70d8dabcf10ed7f2878187f",
+          "attestation_hash": "25b340ec1af040c734006dcdfd9f861697df22ba95ea685994754b9ad6b9dd67",
           "quantity_used": 1
         }
       ],
@@ -57,7 +57,7 @@
       "work_country": "CA",
       "is_substantial_transformation": true,
       "timestamp": "2026-05-02T08:00:00Z",
-      "signature": "BRG8JlENPL5+faSz4hmGPNNzGIYrRjT2MYnJDQj+0krD4ExH3AULki1gnzT55zmin1MTnOFWE0FTH4I8EP3QDw=="
+      "signature": "XCXjTM1pDIP3Ic4+YGzY0zbfQAQLUTe4ivVwbz/+/K7FJZ9gUA2HaJTQb8PqHnDsG6MFSQ1Q55SX7D4m4li6BA=="
     },
     {
       "supplier_id": "SUP-DRONE",
@@ -68,16 +68,16 @@
       },
       "inputs": [
         {
-          "attestation_hash": "1b4448a6cd3161c0c15a6e058887553d7181a31cb0ef6bdce3ce8b99aeb07071",
+          "attestation_hash": "d7e452dd53f11a229f13f62fa17519bd073d6bfac917925563cb20970b8c424a",
           "quantity_used": 1
         }
       ],
-      "materials_cents": 99999,
+      "materials_cents": 20,
       "labour_cents": 400,
       "work_country": "CA",
       "is_substantial_transformation": true,
       "timestamp": "2026-05-03T08:00:00Z",
-      "signature": "rQSOdE9MBr3we89SLx4MJTlXdpOEW4xw1HRS1OUfMDOKQi6IS/IkZuRAx8tdYKBywJpl6pi8c10HLSZWa4UwBA=="
+      "signature": "QJsSx/ghKKyyVFz+WYIEo8c40NOULiGRdNJmpOsNRVt6TR9TTbPlVVQlnMF+MEZgbCHn7eu5Vhhvf1HnCDKVCw=="
     }
   ]
 }

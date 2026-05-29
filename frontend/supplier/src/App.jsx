@@ -9,6 +9,7 @@ import {
 } from "./lib/crypto.js";
 import { submitAttestation, BACKEND_URL } from "./lib/api.js";
 import { runCanonicalSelfTest } from "./lib/canonical.test.js";
+import { DEMO_IDENTITIES } from "./devIdentities.js";
 
 // Steps of the supplier flow.
 const STEP_FORM = "form";
@@ -186,6 +187,44 @@ export default function App() {
     }
   }
 
+  function loadDemoIdentity(sid) {
+    const seed = DEMO_IDENTITIES[sid];
+    if (!seed) return;
+    setKeyError("");
+    try {
+      setKeypair(keypairFromPrivateHex(seed));
+      setPrivInput(seed);
+      update("supplier_id", sid);
+    } catch (e) {
+      setKeyError(e.message);
+    }
+  }
+
+  // Apply an AI-drafted attestation to the form. The human still reviews every
+  // field and signs — the draft is advisory (build-adopt §4).
+  function applyDraft(draft) {
+    setForm((f) => ({
+      ...f,
+      supplier_id: draft.supplier_id ?? f.supplier_id,
+      output_product_id: draft.output?.product_id ?? f.output_product_id,
+      output_quantity:
+        draft.output?.quantity != null ? String(draft.output.quantity) : f.output_quantity,
+      output_unit: draft.output?.unit ?? f.output_unit,
+      materials_cents:
+        draft.materials_cents != null ? String(draft.materials_cents) : f.materials_cents,
+      labour_cents: draft.labour_cents != null ? String(draft.labour_cents) : f.labour_cents,
+      work_country: draft.work_country ?? f.work_country,
+      is_substantial_transformation: !!draft.is_substantial_transformation,
+      timestamp: draft.timestamp ?? f.timestamp,
+      inputs: Array.isArray(draft.inputs)
+        ? draft.inputs.map((i) => ({
+            attestation_hash: i.attestation_hash ?? "",
+            quantity_used: String(i.quantity_used ?? "1"),
+          }))
+        : f.inputs,
+    }));
+  }
+
   function resetAll() {
     setForm(defaultForm());
     setResult(null);
@@ -211,23 +250,26 @@ export default function App() {
 
       <main className="mx-auto max-w-3xl px-6 py-8">
         {step === STEP_FORM && (
-          <FormStep
-            form={form}
-            payload={payload}
-            validation={validation}
-            canonical={canonical}
-            keypair={keypair}
-            privInput={privInput}
-            setPrivInput={setPrivInput}
-            keyError={keyError}
-            applyPastedKey={applyPastedKey}
-            regenerateKey={regenerateKey}
-            update={update}
-            updateInput={updateInput}
-            addInput={addInput}
-            removeInput={removeInput}
-            onContinue={goConfirm}
-          />
+          <div className="space-y-6">
+            <AuthoringTools onLoadIdentity={loadDemoIdentity} onApplyDraft={applyDraft} />
+            <FormStep
+              form={form}
+              payload={payload}
+              validation={validation}
+              canonical={canonical}
+              keypair={keypair}
+              privInput={privInput}
+              setPrivInput={setPrivInput}
+              keyError={keyError}
+              applyPastedKey={applyPastedKey}
+              regenerateKey={regenerateKey}
+              update={update}
+              updateInput={updateInput}
+              addInput={addInput}
+              removeInput={removeInput}
+              onContinue={goConfirm}
+            />
+          </div>
         )}
 
         {step === STEP_CONFIRM && (
@@ -264,6 +306,85 @@ function SelfTestBadge({ selfTest }) {
     >
       canonical self-test: {ok ? "PASS" : "FAIL"}
     </span>
+  );
+}
+
+function AuthoringTools({ onLoadIdentity, onApplyDraft }) {
+  const ids = Object.keys(DEMO_IDENTITIES);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  async function draft() {
+    setBusy(true);
+    setMsg("");
+    try {
+      const res = await fetch(`${BACKEND_URL}/draft`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMsg(data.detail || `Draft unavailable (HTTP ${res.status}).`);
+        return;
+      }
+      onApplyDraft(data.draft || {});
+      setMsg(data.notes || "Draft applied — review every field before signing.");
+    } catch (e) {
+      setMsg(`Could not reach backend: ${e.message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 className="mb-3 text-base font-semibold text-slate-800">Demo tools</h2>
+
+      <label className="block text-left">
+        <span className="block text-sm font-medium text-slate-700">Load demo identity</span>
+        <select
+          className={inputClass}
+          defaultValue=""
+          onChange={(e) => e.target.value && onLoadIdentity(e.target.value)}
+        >
+          <option value="" disabled>
+            choose a registered supplier…
+          </option>
+          {ids.map((id) => (
+            <option key={id} value={id}>
+              {id}
+            </option>
+          ))}
+        </select>
+        <span className="mt-1 block text-xs text-slate-400">
+          Loads a key the registry trusts, so the attestation verifies green.
+        </span>
+      </label>
+
+      <h3 className="mt-5 mb-2 text-sm font-semibold text-slate-700">
+        Draft with AI{" "}
+        <span className="font-normal text-slate-400">(advisory — you review &amp; sign)</span>
+      </h3>
+      <textarea
+        className={inputClass + " h-20"}
+        placeholder="e.g. We CNC-milled 50 RAVEN airframes in Ontario, 3 machinists × 6 hrs at $42/hr, from Canadian 6061 billet."
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+      />
+      <div className="mt-2 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={draft}
+          disabled={busy || !text.trim()}
+          className="rounded-md bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-900 disabled:opacity-50"
+        >
+          {busy ? "Drafting…" : "Draft with AI"}
+        </button>
+        {msg && <span className="text-xs text-slate-500">{msg}</span>}
+      </div>
+    </section>
   );
 }
 

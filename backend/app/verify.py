@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import base64
 
-from . import adapters, content, massbalance
+from . import adapters, content, criticality, massbalance
 from .chain import build_chain
 from .models import (
     Anomaly,
@@ -32,7 +32,9 @@ class Verifier:
 
         if has_cycle:
             anomalies.append(Anomaly(Reason.CYCLE, chain.root_hash, "cycle detected in chain"))
-            return VerificationResult(Designation.NONE, 0.0, 0, 0, {}, anomalies)
+            result = VerificationResult(Designation.NONE, 0.0, 0, 0, {}, anomalies)
+            result.graph = chain_to_graph(chain)
+            return result
 
         # per-node integrity + structural, in precedence order
         seen_serial: dict[tuple[str, str], str] = {}
@@ -66,6 +68,22 @@ class Verifier:
                            f"references missing input {missing[0]}")
                 continue
 
+            if len(node.input_hashes) != len(set(node.input_hashes)):
+                self._fail(node, Reason.BROKEN_LINK, anomalies,
+                           "duplicate input reference")
+                continue
+
+        # temporal monotonicity (advisory): a consumer must not predate its input
+        for h in order:
+            node = chain.by_hash[h]
+            for ref in node.attestation.inputs:
+                p = chain.by_hash.get(ref.attestation_hash)
+                if p is not None and node.attestation.timestamp < p.attestation.timestamp:
+                    anomalies.append(Anomaly(
+                        Reason.TEMPORAL_INVERSION, h,
+                        f"timestamp {node.attestation.timestamp} precedes input "
+                        f"{p.attestation.timestamp}", advisory=True))
+
         # mass-balance (after structural; hard reject)
         for h, detail in massbalance.check(chain).items():
             if h in order and chain.by_hash[h].status == Status.OK:
@@ -74,6 +92,14 @@ class Verifier:
         # costs over valid nodes
         valid = {h for h in order if chain.by_hash[h].status == Status.OK}
         total, canadian, by_country = content.attribute_costs(chain, valid)
+
+        # per-node subtree % (display only; never feeds the verdict)
+        for h, p in content.subtree_percents(chain, valid).items():
+            chain.by_hash[h].subtree_percent = p
+
+        # advisory criticality overlay (display only; never feeds the verdict)
+        for node in chain.by_hash.values():
+            node.annotations["criticality"] = criticality.classify(node)
 
         # verdict
         last_st = adapters.find_last_st(chain)
@@ -94,7 +120,9 @@ class Verifier:
             pass
 
         pct = canadian / total if total else 0.0
-        return VerificationResult(designation, pct, total, canadian, by_country, anomalies)
+        result = VerificationResult(designation, pct, total, canadian, by_country, anomalies)
+        result.graph = chain_to_graph(chain)
+        return result
 
     @staticmethod
     def _fail(node, reason: Reason, anomalies: list[Anomaly], detail: str) -> None:
@@ -108,7 +136,12 @@ def verify_root(store: dict[str, dict], registry: dict, root_hash: str) -> Verif
     # chain to what is reachable from this root, else mass-balance / anomaly /
     # cost would span unrelated products (e.g. a shared raw-material lot would
     # look over-consumed across chains).
-    atts = [adapters.attestation_from_dict(v) for v in store.values()]
+    atts = []
+    for v in store.values():
+        try:
+            atts.append(adapters.attestation_from_dict(v))
+        except Exception:
+            continue  # skip malformed/unparseable entries — degrade gracefully
     full = build_chain(atts, root_hash)
     reachable = full.reachable()
     scoped = [full.by_hash[h].attestation for h in reachable]
@@ -125,6 +158,33 @@ def anomaly_to_dict(a: Anomaly) -> dict:
     }
 
 
+def chain_to_graph(chain) -> dict:
+    """Serialize the verified chain topology for the UI (WS2.1).
+
+    Edge direction is input -> consumer. Node `status` mirrors the reason enum
+    one-to-one (OK / INVALID). This is display data only; it never feeds the
+    verdict. The frontend renders any DAG shape against this.
+    """
+    nodes, edges = [], []
+    for h, node in chain.by_hash.items():
+        att = node.attestation
+        nodes.append({
+            "id": h,
+            "label": f"{att.output.product_id}\n{att.supplier_id} · {att.work_country}",
+            "supplier_id": att.supplier_id,
+            "product_id": att.output.product_id,
+            "country": att.work_country,
+            "status": node.status.value,
+            "reason": node.reason.value if node.reason else None,
+            "subtree_percent": round(node.subtree_percent, 4),
+            "criticality": node.annotations.get("criticality"),
+        })
+        for ih in node.input_hashes:
+            if ih in chain.by_hash:
+                edges.append({"source": ih, "target": h})
+    return {"nodes": nodes, "edges": edges}
+
+
 def result_to_dict(r: VerificationResult) -> dict:
     return {
         "designation": r.designation.value,
@@ -133,4 +193,5 @@ def result_to_dict(r: VerificationResult) -> dict:
         "canadian_cost_cents": r.canadian_cost_cents,
         "cost_by_country": r.cost_by_country,
         "anomalies": [anomaly_to_dict(a) for a in r.anomalies],
+        "graph": r.graph,
     }

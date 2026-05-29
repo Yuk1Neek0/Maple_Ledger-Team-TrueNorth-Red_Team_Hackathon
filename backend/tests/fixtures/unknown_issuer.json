@@ -18,7 +18,7 @@
       "work_country": "CA",
       "is_substantial_transformation": false,
       "timestamp": "2026-05-01T08:00:00Z",
-      "signature": "MixZGFm8o3VL7kIwPTIPklNMqtF/SC+FBBxbdmQq8z4Jc7UKoZ7l7019ArVq5Tc50CJCEYY7NoWEs01t+l1NCQ=="
+      "signature": "BbK6Y7WJQ3R8WPh94bVxLg9+6ejkI/dUOV3wRCbjOb/L2OzqvlRa8bjy49YyQN1EMt95ta/jMrybpdjEyd9wBw=="
     },
     {
       "supplier_id": "SUP-BEAR",
@@ -33,7 +33,7 @@
       "work_country": "CN",
       "is_substantial_transformation": false,
       "timestamp": "2026-05-01T08:00:00Z",
-      "signature": "7RXa6wutqL1tK5jKZ9TytalzDaBnv+sa3g3RCsVbEf2naHuPiSRV9Av9npQ8VQn+1nsx+De2PEl0SEGyhiwaCg=="
+      "signature": "il5PZNuzcohfCx5WWRIp81ToR5oRPnDDMtMmRUsIZlicWg1GbSTuo36fzn92DOcajC9rMrD/ykZEMyRuygXnAQ=="
     },
     {
       "supplier_id": "SUP-MOTOR",
@@ -57,7 +57,7 @@
       "work_country": "CA",
       "is_substantial_transformation": true,
       "timestamp": "2026-05-02T08:00:00Z",
-      "signature": "2bznQ82v8JCrxAbM0lJ2ePFx03vH63/JbaMPSykVUiddt9mGzLI1Olo0xJkUtsDbxULjRrvpwy34g/1PWtesCA=="
+      "signature": "BRG8JlENPL5+faSz4hmGPNNzGIYrRjT2MYnJDQj+0krD4ExH3AULki1gnzT55zmin1MTnOFWE0FTH4I8EP3QDw=="
     },
     {
       "supplier_id": "SUP-ROGUE",
@@ -77,7 +77,7 @@
       "work_country": "CA",
       "is_substantial_transformation": true,
       "timestamp": "2026-05-03T08:00:00Z",
-      "signature": "QAY16KPwdEVMgIfFmyKjc1/8X/YhTJtq88f88opeeUs81UQFaVRu7XgklpY/XgW5TNqg8DkMm18qMQpMXlqrDg=="
+      "signature": "az0xufNRKan/La0tyGevQH8ZZbGosqHz15XR069J+c17KEF+6Fr6Of3SoNXoW8ZceAF6YOovVe67kOCV2sW5CA=="
     }
   ]
 }

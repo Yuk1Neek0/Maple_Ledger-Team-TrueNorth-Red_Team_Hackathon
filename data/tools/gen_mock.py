@@ -11,6 +11,7 @@ byte-for-byte on what gets signed.
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -25,19 +26,31 @@ from app.models import Attestation, InputRef, Output  # noqa: E402
 
 FIXTURES = ROOT / "backend" / "tests" / "fixtures"
 REGISTRY = ROOT / "data" / "registry.json"
+DEV_KEYS = ROOT / "data" / "dev" / "dev_keys.json"
+
+
+def _seed(supplier_id: str) -> bytes:
+    """Deterministic 32-byte Ed25519 seed for a mock supplier (DEV ONLY).
+
+    Derived from the supplier id so registry.json + fixture signatures are
+    stable across reruns, and so the supplier UI can load a registered identity
+    for demos. NOT for production — real signers hold their own private keys.
+    """
+    return hashlib.sha256(b"maple-ledger-mock-v1::" + supplier_id.encode()).digest()
 
 SUPPLIERS = ["SUP-ALU", "SUP-BEAR", "SUP-MOTOR", "SUP-DRONE"]
 TS = {"SUP-ALU": "2026-05-01T08:00:00Z", "SUP-BEAR": "2026-05-01T08:00:00Z",
       "SUP-MOTOR": "2026-05-02T08:00:00Z", "SUP-DRONE": "2026-05-03T08:00:00Z"}
 
 
-def make(priv, supplier_id, product_id, qty, unit, mat, lab, country, st, inputs=()):
+def make(priv, supplier_id, product_id, qty, unit, mat, lab, country, st, inputs=(), ts=None):
     att = Attestation(
         supplier_id=supplier_id,
         output=Output(product_id, qty, unit),
         inputs=tuple(InputRef(h, q) for h, q in inputs),
         materials_cents=mat, labour_cents=lab, work_country=country,
-        is_substantial_transformation=st, timestamp=TS.get(supplier_id, "2026-05-03T08:00:00Z"),
+        is_substantial_transformation=st,
+        timestamp=ts or TS.get(supplier_id, "2026-05-03T08:00:00Z"),
         signature="",
     )
     payload = adapters.payload_dict(att)
@@ -56,8 +69,8 @@ def main():
     FIXTURES.mkdir(parents=True, exist_ok=True)
     REGISTRY.parent.mkdir(parents=True, exist_ok=True)
 
-    keys = {s: Ed25519PrivateKey.generate() for s in SUPPLIERS}
-    rogue = Ed25519PrivateKey.generate()  # deliberately NOT in the registry
+    keys = {s: Ed25519PrivateKey.from_private_bytes(_seed(s)) for s in SUPPLIERS}
+    rogue = Ed25519PrivateKey.from_private_bytes(_seed("SUP-ROGUE"))  # NOT in registry
 
     registry = {
         s: {
@@ -67,6 +80,15 @@ def main():
         for s, k in keys.items()
     }
     REGISTRY.write_text(json.dumps(registry, indent=2), encoding="utf-8")
+
+    # Dev-only: export the private seeds so the supplier UI can sign as a
+    # registered identity. The real registry holds PUBLIC keys only; never ship
+    # this file (gitignored via data/dev/).
+    DEV_KEYS.parent.mkdir(parents=True, exist_ok=True)
+    DEV_KEYS.write_text(
+        json.dumps({s: _seed(s).hex() for s in SUPPLIERS}, indent=2),
+        encoding="utf-8",
+    )
 
     def write(name, description, root_hash, expected, atts):
         FIXTURES.joinpath(name).write_text(
@@ -131,7 +153,48 @@ def main():
     write("foreign_assembly.json", ">=98% CA cost, last ST in CN", h_drone_f,
           {"designation": "NONE"}, [alu, bear_ca, motor_ca, drone_f])
 
-    print(f"wrote registry ({len(registry)} suppliers) + 7 fixtures to {FIXTURES}")
+    # ---- replay: two ALU attestations sharing (SUP-ALU, raw_aluminum) -> REPLAY_DETECTED ----
+    # alu_dup differs only in materials_cents (501 vs 500) so it hashes differently
+    # but collides on the (issuer, output serial) pair the replay check keys on.
+    alu_dup, h_alu_dup = make(keys["SUP-ALU"], "SUP-ALU", "raw_aluminum", 1, "kg", 501, 200, "CA", False)
+    motor_rp, h_motor_rp = make(keys["SUP-MOTOR"], "SUP-MOTOR", "motor_housing", 1, "pcs", 0, 300, "CA", True,
+                               inputs=[(h_alu, 1), (h_alu_dup, 1)])
+    drone_rp, h_drone_rp = make(keys["SUP-DRONE"], "SUP-DRONE", "drone_X1", 1, "pcs", 20, 400, "CA", True,
+                               inputs=[(h_motor_rp, 1)])
+    write("replay.json", "two attestations share (issuer, output serial)", h_drone_rp,
+          {"reason": "REPLAY_DETECTED"}, [alu, alu_dup, motor_rp, drone_rp])
+
+    # ---- temporal: an input dated AFTER its consumer -> TEMPORAL_INVERSION (advisory) ----
+    alu_late, h_alu_late = make(keys["SUP-ALU"], "SUP-ALU", "raw_aluminum", 1, "kg", 500, 200, "CA", False,
+                               ts="2026-05-10T08:00:00Z")
+    motor_e, h_motor_e = make(keys["SUP-MOTOR"], "SUP-MOTOR", "motor_housing", 1, "pcs", 0, 300, "CA", True,
+                             inputs=[(h_alu_late, 1)], ts="2026-05-02T08:00:00Z")
+    drone_e, h_drone_e = make(keys["SUP-DRONE"], "SUP-DRONE", "drone_X1", 1, "pcs", 20, 400, "CA", True,
+                             inputs=[(h_motor_e, 1)], ts="2026-05-03T08:00:00Z")
+    write("temporal.json", "input timestamp later than its consumer", h_drone_e,
+          {"reason": "TEMPORAL_INVERSION"}, [alu_late, motor_e, drone_e])
+
+    # ---- duplicate input ref: a node references the same input hash twice -> BROKEN_LINK ----
+    # alu2x produces 2 units so the double-reference does not also trip mass-balance.
+    alu2x, h_alu2x = make(keys["SUP-ALU"], "SUP-ALU", "raw_aluminum", 2, "kg", 500, 200, "CA", False)
+    motor_di, h_motor_di = make(keys["SUP-MOTOR"], "SUP-MOTOR", "motor_housing", 1, "pcs", 0, 300, "CA", True,
+                               inputs=[(h_alu2x, 1), (h_alu2x, 1)])
+    drone_di, h_drone_di = make(keys["SUP-DRONE"], "SUP-DRONE", "drone_X1", 1, "pcs", 20, 400, "CA", True,
+                               inputs=[(h_motor_di, 1)])
+    write("duplicate_input.json", "node references the same input hash twice", h_drone_di,
+          {"reason": "BROKEN_LINK"}, [alu2x, motor_di, drone_di])
+
+    # ---- anomaly: a valid-signature node with ~5x labour cost -> high advisory score ----
+    # Cryptography passes (the signature is real); the IsolationForest flags it for
+    # human review. The verdict is unaffected — "crypto for integrity, AI for plausibility".
+    motor_inf, h_motor_inf = make(keys["SUP-MOTOR"], "SUP-MOTOR", "motor_housing", 1, "pcs", 0, 1500, "CA", True,
+                                 inputs=[(h_alu, 1), (h_bear, 1)])
+    drone_inf, h_drone_inf = make(keys["SUP-DRONE"], "SUP-DRONE", "drone_X1", 1, "pcs", 20, 400, "CA", True,
+                                 inputs=[(h_motor_inf, 1)])
+    write("anomaly.json", "valid signature but inflated (~5x) labour cost", h_drone_inf,
+          {"reason": "ANOMALY"}, [alu, bear, motor_inf, drone_inf])
+
+    print(f"wrote registry ({len(registry)} suppliers) + dev_keys + 11 fixtures to {FIXTURES}")
 
 
 if __name__ == "__main__":
