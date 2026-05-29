@@ -1,0 +1,83 @@
+{
+  "description": ">=98% CA cost, last ST in CN",
+  "root_hash": "93c11364caed22eb5f949b6e3c07917b88563d293ac91c636b36c8538c50ae79",
+  "expected": {
+    "designation": "NONE"
+  },
+  "attestations": [
+    {
+      "supplier_id": "SUP-ALU",
+      "output": {
+        "product_id": "raw_aluminum",
+        "quantity": 1,
+        "unit": "kg"
+      },
+      "inputs": [],
+      "materials_cents": 500,
+      "labour_cents": 200,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-01T08:00:00Z",
+      "signature": "MixZGFm8o3VL7kIwPTIPklNMqtF/SC+FBBxbdmQq8z4Jc7UKoZ7l7019ArVq5Tc50CJCEYY7NoWEs01t+l1NCQ=="
+    },
+    {
+      "supplier_id": "SUP-BEAR",
+      "output": {
+        "product_id": "steel_bearings",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [],
+      "materials_cents": 40,
+      "labour_cents": 10,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-01T08:00:00Z",
+      "signature": "OHXlpxxY0Jpqu1HgnQmxtCwiMY1CC9Sd3dXKac/JsvwKa8FyxYmCiJ8KZAs6kyFDJEU0tsEIGomV4PHdbI/zCA=="
+    },
+    {
+      "supplier_id": "SUP-MOTOR",
+      "output": {
+        "product_id": "motor_housing",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "cb02d68739bf250608d06276833f7a1ca995d6ef95c1c2c58d456fba0cb59db1",
+          "quantity_used": 1
+        },
+        {
+          "attestation_hash": "f12ffd0a1066469b35cdc4b414a8784d067ca7682dfe33735fe75cdc6d1c545a",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 0,
+      "labour_cents": 300,
+      "work_country": "CA",
+      "is_substantial_transformation": true,
+      "timestamp": "2026-05-02T08:00:00Z",
+      "signature": "yGkTrYP2c/FlPpTn0rBRoABc/OM7zuTn8l7pRYEKYRvdnfNRF788dyugvGGjH+591cMPROFmCICaBQMHJV3PCg=="
+    },
+    {
+      "supplier_id": "SUP-DRONE",
+      "output": {
+        "product_id": "drone_X1",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "9051cfe6421358d116ef000c5321f65989e16d5b7dd01ac55af11701caeec6d4",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 0,
+      "labour_cents": 10,
+      "work_country": "CN",
+      "is_substantial_transformation": true,
+      "timestamp": "2026-05-03T08:00:00Z",
+      "signature": "g/5bPGf5kt4Hhw2hud089H4aAB3uUuICgSn/Lz7qO6kMJ3nMHebdTIvZMK/mixr2U5m1czz2eWRexfVWDInSAQ=="
+    }
+  ]
+}

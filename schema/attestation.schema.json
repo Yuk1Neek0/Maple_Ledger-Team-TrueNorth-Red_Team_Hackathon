@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://truenorth.local/attestation.schema.json",
+  "title": "Attestation (mock — swapped at kickoff)",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "supplier_id",
+    "output",
+    "inputs",
+    "materials_cents",
+    "labour_cents",
+    "work_country",
+    "is_substantial_transformation",
+    "timestamp",
+    "signature"
+  ],
+  "properties": {
+    "supplier_id": { "type": "string", "minLength": 1 },
+    "output": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["product_id", "quantity", "unit"],
+      "properties": {
+        "product_id": { "type": "string", "minLength": 1 },
+        "quantity": { "type": "integer", "minimum": 0 },
+        "unit": { "type": "string", "minLength": 1 }
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["attestation_hash", "quantity_used"],
+        "properties": {
+          "attestation_hash": { "type": "string", "minLength": 1 },
+          "quantity_used": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "materials_cents": { "type": "integer", "minimum": 0 },
+    "labour_cents": { "type": "integer", "minimum": 0 },
+    "work_country": { "type": "string", "pattern": "^[A-Z]{2}$" },
+    "is_substantial_transformation": { "type": "boolean" },
+    "timestamp": { "type": "string", "minLength": 1 },
+    "signature": { "type": "string", "minLength": 1 }
+  }
+}

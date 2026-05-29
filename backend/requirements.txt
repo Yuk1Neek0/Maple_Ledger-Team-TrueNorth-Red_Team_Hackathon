@@ -1,0 +1,6 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+jsonschema==4.23.0
+cryptography==44.0.0
+scikit-learn==1.6.1
+numpy==2.2.1
