@@ -75,6 +75,7 @@ class Node:
     status: Status = Status.OK
     reason: Reason | None = None
     subtree_percent: float = 0.0    # display-only: CA% over this node's reachable subtree
+    contribution_cents: int = 0     # display-only: flow-weighted cents this node adds to the total
     annotations: dict = field(default_factory=dict)  # overlay layer; never read in the verdict path
     anomalies: list[Anomaly] = field(default_factory=list)
 

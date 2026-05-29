@@ -177,6 +177,7 @@ def chain_to_graph(chain) -> dict:
             "status": node.status.value,
             "reason": node.reason.value if node.reason else None,
             "subtree_percent": round(node.subtree_percent, 4),
+            "contribution_cents": node.contribution_cents,
             "criticality": node.annotations.get("criticality"),
         })
         for ih in node.input_hashes:

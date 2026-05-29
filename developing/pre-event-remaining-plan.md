@@ -1,4 +1,4 @@
-# Pre-Event Remaining Build Plan — everything we can finish before kickoff
+  # Pre-Event Remaining Build Plan — everything we can finish before kickoff
 
 > **Written:** 2026-05-29 (the evening before). **Kickoff:** 2026-05-30, ~5-hour single-day build.
 > **Goal of this document:** enumerate *every* piece of work that is **spec-independent** — i.e. buildable tonight without the event-day spec — so that on the day we only do *translation* (fill the six adapter bodies + confirm the four unknowns), not *construction*.

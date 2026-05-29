@@ -29,6 +29,7 @@ def _attribute_full(chain, valid: set[str]) -> tuple[int, int, dict[str, int]]:
     for h in valid:
         mat, lab, country = adapters.get_costs(chain.by_hash[h].attestation)
         contrib = mat + lab
+        chain.by_hash[h].contribution_cents = contrib
         total += contrib
         by_country[country] = by_country.get(country, 0) + contrib
     return total, by_country.get("CA", 0), by_country
@@ -62,6 +63,7 @@ def _attribute_fraction(chain, valid: set[str]) -> tuple[int, int, dict[str, int
         node = chain.by_hash[h]
         mat, lab, country = adapters.get_costs(node.attestation)
         contrib = round((mat + lab) * flow[h])
+        node.contribution_cents = contrib
         total += contrib
         by_country[country] = by_country.get(country, 0) + contrib
     return total, by_country.get("CA", 0), by_country
