@@ -4,31 +4,28 @@ One positive + one negative case per rule. Every rule MUST emit advisory=True
 records and NEVER change the designation. The happy-path fixture stays clean
 on every rule (regression guard against rule false-positives drifting in).
 """
-import dataclasses
-import json
-from pathlib import Path
-
 from app import adapters, rules
 from app.chain import build_chain
 from app.models import Attestation, Designation, InputRef, Node, Output, Reason
 from app.registry import load_registry
 from app.verify import Verifier
+from tests import realfixtures as rf
 
-FIX = Path(__file__).parent / "fixtures"
 REGISTRY = load_registry()
 
 
-def _verified(name):
-    fx = json.loads((FIX / name).read_text(encoding="utf-8"))
-    atts = [adapters.attestation_from_dict(o) for o in fx["attestations"]]
-    chain = build_chain(atts, fx["root_hash"])
-    r = Verifier(REGISTRY).verify(chain)
-    return chain, r
+def _verified(builder):
+    """Build a real-format scenario, verify it, return (chain, result)."""
+    pid, wire = builder()
+    atts = [adapters.attestation_from_dict(o) for o in wire]
+    root_hash = next(adapters.compute_hash(a) for a in atts if a.attestation_id == pid)
+    chain = build_chain(atts, root_hash)
+    return chain, Verifier(REGISTRY).verify(chain)
 
 
 def test_happy_path_triggers_no_advisory_rules():
     """Regression guard: a clean valid chain must not trip any new rule."""
-    _, r = _verified("happy_path.json")
+    _, r = _verified(rf.happy_path)
     rule_reasons = {a.reason for a in r.anomalies} & {
         Reason.ZERO_LABOUR_ON_ST, Reason.HIGH_FOREIGN_DEPENDENCY,
         Reason.SUSPICIOUS_COST_SPIKE, Reason.LOW_CANADIAN_WITH_CLAIM,
@@ -132,18 +129,18 @@ def test_timestamp_burst_silent_for_3_within_60s():
     assert rules._timestamp_burst(chain) == []
 
 
-# ---- rule 2 + 3 via full verify_root path ------------------------------
+# ---- rule 2 + 3 via the full verify path -------------------------------
 def test_high_foreign_dependency_fires_on_under_51_fixture_only_if_passing():
     """under_51 verdict is NONE, so the rule must NOT fire (rule gates on passing)."""
-    _, r = _verified("under_51_percent.json")
+    _, r = _verified(rf.under_51_percent)
     fires = {a.reason for a in r.anomalies if a.reason == Reason.HIGH_FOREIGN_DEPENDENCY}
     assert fires == set()
 
 
 def test_advisory_rules_never_change_designation():
     """End-to-end invariant: every rule's anomaly must have advisory=True."""
-    for fixture in ("happy_path.json", "product_of_canada.json", "under_51_percent.json"):
-        _, r = _verified(fixture)
+    for builder in (rf.happy_path, rf.product_of_canada, rf.under_51_percent):
+        _, r = _verified(builder)
         for a in r.anomalies:
             if a.reason in {
                 Reason.ZERO_LABOUR_ON_ST, Reason.HIGH_FOREIGN_DEPENDENCY,
