@@ -8,8 +8,9 @@
 // the backend.
 
 import workedExampleChain from "./worked_example_chain.json";
+import tamperedExampleChain from "./tampered_example_chain.json";
 
-export { workedExampleChain };
+export { workedExampleChain, tamperedExampleChain };
 
 // Real action_type -> short display label for graph nodes.
 const ACTION_LABEL = {
@@ -50,8 +51,11 @@ export function buildGraph(attestations, anomalies, productId) {
     const name = a.output?.name || a.attestation_id;
     return {
       id: a.attestation_id,
-      // Two-line label: product name, then supplier · country.
+      // Two-line label kept for backwards-compat; the React Flow node renders
+      // the discrete fields below instead.
       label: `${name}\n${a.supplier_id || "?"} · ${country}`,
+      name,
+      supplier: a.supplier_id || "?",
       country,
       status: flagged.has(a.attestation_id) ? "INVALID" : "OK",
       action_type: a.action_type,

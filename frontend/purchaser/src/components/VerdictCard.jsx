@@ -1,111 +1,89 @@
-import { designationInfo, formatCad, formatPct } from "../labels.js";
+// VerdictCard: the headline result — the designation, the Canadian-content
+// metric, the cost split, and any anomalies. The buyer's at-a-glance
+// "is this really Canadian?" panel.
+
 import Panel from "./ui/Panel.jsx";
 import Readout from "./ui/Readout.jsx";
 import HashStrip from "./ui/HashStrip.jsx";
 import CostBreakdown from "./CostBreakdown.jsx";
 import AnomalyList from "./AnomalyList.jsx";
+import {
+  designationLabel,
+  formatPct,
+} from "../labels.js";
 
-// The headline verdict, rendered as an instrument readout. Driven off the REAL
-// /verify response:
-//   { designation, canadian_content_percentage, chain_valid, anomalies[] }
-// plus a locally-derived cost attribution (the response carries no cost detail).
 export default function VerdictCard({ result, cost, productId }) {
-  const info = designationInfo(result.designation);
-  const pass = info.pass;
-  const chainValid = result.chain_valid !== false;
-  // "Conflicted": a passing designation alongside an invalid chain.
-  const conflicted = pass && !chainValid;
-  const tone = pass ? "signal" : "alarm";
-  const anomalyCount = (result.anomalies || []).length;
-  const pct = result.canadian_content_percentage;
-  const total = cost?.totalCad ?? 0;
-  const canadian = cost?.canadianCad ?? 0;
+  const pass = result.designation !== "none";
+  // Key numbers are navy; a non-qualifying verdict reads red.
+  const headlineText = pass ? "text-navy" : "text-red";
+  const barColor = pass ? "bg-navy" : "bg-red";
+  const pct = Math.min(100, Math.max(0, result.canadian_content_percentage || 0));
 
   return (
     <Panel
-      label="verdict"
-      accent={tone}
-      right={result.designation}
-      bodyClass="p-0"
-      className={pass ? "shadow-[0_0_40px_-22px_var(--color-signal)]" : "shadow-[0_0_40px_-22px_var(--color-alarm)]"}
+      label="designation"
+      accent={pass ? "navy" : "red"}
+      right={pass ? "qualified" : "not qualified"}
     >
-      {/* latched status header */}
-      <div className="latch border-b border-line bg-elevated px-5 py-5">
-        <div
-          className={`flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.24em] ${
-            pass ? "text-signal" : "text-alarm"
-          }`}
-        >
-          <span className={`inline-block h-2 w-2 rounded-full ${pass ? "bg-signal" : "bg-alarm"} blink`} />
-          {pass ? "verified" : "does not qualify"}
+      <div>
+        {/* Designation headline */}
+        <div className="flex items-baseline justify-between gap-3">
+          <div>
+            <div className="font-mono text-[11px] uppercase tracking-wider text-ink-3">designation</div>
+            <div className={`mt-1 text-2xl font-bold tracking-tight ${headlineText}`}>
+              {designationLabel(result.designation)}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="font-mono text-[11px] uppercase tracking-wider text-ink-3">ca content</div>
+            <div className={`mt-1 text-3xl font-bold tabular-nums ${headlineText}`}>
+              {formatPct(result.canadian_content_percentage)}
+            </div>
+          </div>
         </div>
-        <div
-          className={`mt-2 text-3xl font-semibold leading-none ${
-            pass ? "text-signal glow-signal" : "text-alarm glow-alarm"
-          }`}
-        >
-          {info.title}
-        </div>
-        <p className="prose-sans mt-2 max-w-md text-sm text-dim">{info.blurb}</p>
-      </div>
 
-      <div className="space-y-6 p-5">
-        {conflicted && (
-          <div className="border-l-2 border-alarm bg-alarm/10 px-4 py-3 text-sm text-alarm">
-            <strong className="uppercase tracking-wide">⚠ caution</strong> — “{info.title}”
-            is asserted but the chain carries an integrity failure below. Treat the label as
-            unverified until resolved.
+        {/* Canadian-content bar */}
+        <div className="mt-4">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-line">
+            <div
+              className={`h-full rounded-full ${barColor}`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Cost split — derived locally; only the headline % is from the verifier */}
+        {cost && (
+          <div className="mt-5">
+            <CostBreakdown cost={cost} />
+            <p className="mt-2 text-[11px] text-ink-3">
+              Dollar split derived locally from the submitted chain. The verifier returns the
+              percentage above, not the per-country amounts.
+            </p>
           </div>
         )}
 
-        {/* hero metric */}
-        <div className="flex flex-col items-center border border-line bg-base py-6">
-          <div className="text-[11px] uppercase tracking-[0.2em] text-dim">
-            Canadian content
-          </div>
-          <div
-            className={`mt-1 text-6xl font-semibold tabular-nums ${
-              pass ? "text-signal glow-signal" : "text-alarm glow-alarm"
-            }`}
-          >
-            {formatPct(pct)}
-          </div>
-          <div className="mt-2 text-xs text-dim">
-            {formatCad(canadian)} CA / {formatCad(total)} total
-          </div>
-        </div>
-
-        {/* telemetry summary */}
-        <div className="space-y-1.5">
-          <Readout label="designation" value={result.designation} tone={tone} glow />
-          <Readout label="canadian content" value={formatPct(pct)} tone={tone} />
+        {/* Readouts */}
+        <div className="mt-5 space-y-1.5">
+          <Readout label="product id" value={productId || "—"} mono />
           <Readout
             label="chain integrity"
-            value={chainValid ? "valid" : "invalid"}
-            tone={chainValid ? "signal" : "alarm"}
+            value={result.chain_valid ? "intact" : "compromised"}
+            tone={result.chain_valid ? "ok" : "red"}
           />
-          <Readout label="ca cost" value={formatCad(canadian)} tone="signal" />
-          <Readout label="total cost" value={formatCad(total)} tone="ink" />
           <Readout
             label="anomalies"
-            value={anomalyCount === 0 ? "0 · clean" : String(anomalyCount)}
-            tone={anomalyCount === 0 ? "signal" : "alarm"}
+            value={(result.anomalies || []).length}
+            tone={(result.anomalies || []).length ? "red" : "ok"}
           />
         </div>
 
-        <section>
-          <h3 className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-cyan">
-            Cost origin
-          </h3>
-          <CostBreakdown byCountry={cost?.byCountry} totalCad={total} />
-        </section>
-
-        <section>
-          <h3 className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-cyan">
-            Integrity log
-          </h3>
-          <AnomalyList anomalies={result.anomalies} />
-        </section>
+        {/* Anomalies */}
+        {(result.anomalies || []).length > 0 && (
+          <div className="mt-5">
+            <AnomalyList anomalies={result.anomalies} />
+          </div>
+        )}
       </div>
 
       {productId && <HashStrip hash={productId} label="product" />}

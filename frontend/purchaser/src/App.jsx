@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { verifyChain } from "./api.js";
 import { BACKEND_URL } from "./config.js";
 import {
@@ -7,22 +7,25 @@ import {
   criticality,
   parseChainInput,
   workedExampleChain,
+  tamperedExampleChain,
 } from "./chain.js";
 import VerdictCard from "./components/VerdictCard.jsx";
 import ProvenanceGraph from "./components/ProvenanceGraph.jsx";
+import QrScanner from "./components/QrScanner.jsx";
 import Panel from "./components/ui/Panel.jsx";
 import { StatusNode } from "./components/ui/Readout.jsx";
 import BootSequence from "./components/ui/BootSequence.jsx";
+import Shell from "./components/ui/Shell.jsx";
 import { countryName, formatCad, formatPct } from "./labels.js";
 
-// Shared control surface button styles.
+// Shared control surface button styles (Maple Ledger light).
 const BTN_PRIMARY =
-  "inline-flex items-center justify-center gap-2 border border-cyan bg-cyan/10 px-4 py-2 text-sm font-semibold uppercase tracking-[0.14em] text-cyan transition hover:bg-cyan/20 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-btn bg-navy px-4 py-2 text-sm font-medium text-paper transition hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-50";
 const BTN_GHOST =
-  "inline-flex items-center justify-center gap-2 border border-line px-4 py-2 text-sm font-medium uppercase tracking-[0.14em] text-dim transition hover:border-line-bright hover:text-ink";
+  "inline-flex items-center justify-center gap-2 rounded-btn border border-line-2 bg-paper px-4 py-2 text-sm font-medium text-ink transition hover:bg-paper-2";
 
 // Top-level flow:
-//   load a CHAIN (worked example or pasted JSON) -> POST /verify ->
+//   load a CHAIN (worked example, scanned QR, or pasted JSON) -> POST /verify ->
 //   render the real verdict + the provenance graph built from the chain.
 //
 // The real /verify response carries only designation / percentage / chain_valid
@@ -74,47 +77,23 @@ export default function App() {
   }, []);
 
   return (
-    <div className="flex min-h-full flex-col">
-      {/* identity stripe */}
-      <div className="h-0.5 w-full bg-gradient-to-r from-maple via-maple/40 to-transparent" />
-
-      <header className="sticky top-0 z-40 border-b border-line bg-panel/85 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-2.5">
-          <div className="flex items-center gap-3">
-            <img src="/maple.svg" alt="" aria-hidden className="h-6 w-6" />
-            <div className="leading-tight">
-              <div className="text-sm font-semibold tracking-[0.22em] text-ink">
-                MAPLE LEDGER
-              </div>
-              <div className="text-[10px] uppercase tracking-[0.26em] text-dim">
-                provenance verification terminal
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button type="button" onClick={() => setShowManual(true)} className={BTN_GHOST}>
-              manual
-            </button>
-            <span
-              title={`Verifying against ${BACKEND_URL}/verify`}
-              className="border border-signal/40 bg-signal/10 px-2.5 py-1"
-            >
-              <StatusNode tone="signal" label={`live · ${BACKEND_URL.replace(/^https?:\/\//, "")}`} blink />
-            </span>
-          </div>
+    <Shell
+      active="purchaser"
+      context="purchaser · verify origin"
+      backend={BACKEND_URL.replace(/^https?:\/\//, "")}
+    >
+      <main className="mx-auto w-full max-w-6xl px-4 py-6">
+        <div className="mb-5 flex items-center justify-between">
+          <button type="button" onClick={() => setShowManual(true)} className={BTN_GHOST}>
+            field guide
+          </button>
+          <StatusNode
+            tone={status === "error" ? "red" : "ok"}
+            label={`live · ${BACKEND_URL.replace(/^https?:\/\//, "")}`}
+          />
         </div>
-      </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
-        {status === "idle" && (
-          <div className="mx-auto max-w-xl space-y-4">
-            <div className="flex items-center justify-between border border-line bg-panel px-3 py-2 text-[11px] uppercase tracking-[0.16em] text-dim">
-              <StatusNode tone="signal" label="system ready" blink />
-              <span className="text-faint">awaiting chain</span>
-            </div>
-            <ChainLoader onVerify={runVerify} />
-          </div>
-        )}
+        {status === "idle" && <VerifyHero onVerify={runVerify} />}
 
         {status === "loading" && (
           <div className="mx-auto max-w-xl">
@@ -124,14 +103,14 @@ export default function App() {
 
         {status === "error" && (
           <div className="mx-auto max-w-md space-y-4">
-            <Panel label="fault" accent="alarm" right="halted">
-              <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-alarm">
-                <span className="blink">●</span> verification fault
+            <Panel label="fault" accent="red" right="halted">
+              <div className="flex items-center gap-2 text-sm font-semibold text-red">
+                <span className="inline-block h-2 w-2 rounded-full bg-red" aria-hidden /> verification fault
               </div>
-              <p className="prose-sans mt-2 text-sm text-dim">{error}</p>
+              <p className="mt-2 text-sm text-ink-2">{error}</p>
             </Panel>
             <button type="button" onClick={reset} className={`${BTN_PRIMARY} w-full`}>
-              ▸ load another chain
+              ▸ verify another product
             </button>
           </div>
         )}
@@ -152,7 +131,7 @@ export default function App() {
                 ▸ calculation detail
               </button>
               <button type="button" onClick={reset} className={BTN_GHOST}>
-                ↻ load another chain
+                ↻ verify another product
               </button>
             </div>
 
@@ -169,94 +148,133 @@ export default function App() {
         )}
       </main>
 
-      <footer className="mx-auto w-full max-w-6xl px-4 py-6 text-center text-[11px] uppercase tracking-[0.18em] text-faint">
-        cryptographic-provenance verifier · demo build
-      </footer>
-
       {showManual && <Manual onClose={() => setShowManual(false)} />}
-    </div>
+    </Shell>
   );
 }
 
-// ChainLoader: load the worked example with one click, or paste a chain JSON.
-// Replaces the old QR/root-hash entry — the real backend verifies a whole chain
-// in one POST, not a hash lookup.
-function ChainLoader({ onVerify }) {
+// VerifyHero: the buyer's entry point — scan a QR or paste a hash / chain JSON,
+// or load the worked example. The real backend verifies a whole chain in one
+// POST, so a scanned/pasted value is parsed into a chain before submitting.
+function VerifyHero({ onVerify }) {
   const [text, setText] = useState("");
   const [err, setErr] = useState("");
+  const fileRef = useRef(null);
 
-  function loadWorkedExample() {
-    setErr("");
-    onVerify(workedExampleChain);
-  }
-
-  function verifyPasted() {
+  function tryVerify(raw) {
     setErr("");
     try {
-      const parsed = parseChainInput(text);
-      onVerify(parsed);
+      onVerify(parseChainInput(raw));
     } catch (e) {
       setErr(e.message);
     }
   }
 
+  function onFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setText(String(reader.result || ""));
+      tryVerify(String(reader.result || ""));
+    };
+    reader.onerror = () => setErr("Could not read that file.");
+    reader.readAsText(file);
+  }
+
   return (
-    <Panel label="acquire" accent="cyan" right="load a chain">
-      <p className="prose-sans text-sm text-dim">
-        Load a provenance chain and verify it against the live backend. The chain — the finished
-        product&apos;s attestation plus every ancestor — is submitted in one request; the verdict,
-        Canadian content, and any integrity anomalies come back from the verifier.
-      </p>
+    <div className="mx-auto max-w-3xl space-y-6">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold tracking-tight text-navy">Verify origin</h1>
+        <p className="mx-auto mt-1 max-w-xl text-sm text-ink-2">
+          Scan a product&apos;s QR or paste its provenance chain. The verifier walks the chain,
+          checks every signature, and returns the Canadian-content designation with any integrity
+          anomalies.
+        </p>
+      </div>
 
-      <button
-        type="button"
-        onClick={loadWorkedExample}
-        className={`${BTN_PRIMARY} mt-4 w-full`}
-      >
-        ▸ load worked example (recovery drone)
-      </button>
-      <p className="mt-1.5 text-xs text-faint">
-        12 attestations · expected: <span className="text-signal">made_in_canada</span> · 58.4% · valid
-      </p>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Panel label="scan qr" accent="navy">
+          <QrScanner onScan={tryVerify} />
+          <p className="mt-3 text-xs text-ink-3">
+            Scans a QR encoding the product&apos;s provenance chain (or a single attestation).
+          </p>
+        </Panel>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (text.trim()) verifyPasted();
-        }}
-        className="mt-5 border-t border-line pt-4"
-      >
-        <label htmlFor="ml-chain-json" className="text-[11px] uppercase tracking-[0.16em] text-dim">
-          Or paste a chain JSON
-        </label>
-        <textarea
-          id="ml-chain-json"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={`{ "product_attestation_id": "att-…", "attestations": [ … ] }`}
-          className="mt-2 h-40 w-full resize-y border border-line bg-base px-3 py-2 font-mono text-xs text-ink placeholder:text-faint focus:border-cyan focus:outline-none"
-        />
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <span className="text-xs text-faint">
-            Accepts the full request envelope, a bare attestations array, or one attestation.
-          </span>
-          <button
-            type="submit"
-            disabled={!text.trim()}
-            className="border border-signal/60 bg-signal/10 px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em] text-signal transition hover:bg-signal/20 disabled:cursor-not-allowed disabled:opacity-40"
+        <Panel label="paste hash / chain" accent="navy">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (text.trim()) tryVerify(text);
+            }}
           >
-            verify
-          </button>
-        </div>
-        {err && (
-          <p className="mt-2 border-l-2 border-amber bg-amber/10 px-3 py-2 text-sm text-amber">{err}</p>
-        )}
-      </form>
-    </Panel>
+            <textarea
+              id="ml-chain-json"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={`{ "product_attestation_id": "att-…", "attestations": [ … ] }`}
+              className="h-40 w-full resize-y rounded-btn border border-line-2 bg-paper px-3 py-2 font-mono text-xs text-ink placeholder:text-ink-3 focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy/30"
+            />
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <button type="button" onClick={() => fileRef.current?.click()} className={BTN_GHOST}>
+                ⭱ upload JSON
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="application/json,.json"
+                onChange={onFile}
+                className="hidden"
+              />
+              <button type="submit" disabled={!text.trim()} className={BTN_PRIMARY}>
+                verify
+              </button>
+            </div>
+            <p className="mt-1.5 text-xs text-ink-3">
+              Full envelope, a bare attestations array, or one attestation.
+            </p>
+            {err && (
+              <p className="mt-2 rounded-btn border-l-2 border-red bg-tint-red px-3 py-2 text-sm text-red">
+                {err}
+              </p>
+            )}
+          </form>
+        </Panel>
+      </div>
+
+      <Panel label="demo" accent="navy" right="no QR handy?">
+        <button
+          type="button"
+          onClick={() => onVerify(workedExampleChain)}
+          className={`${BTN_PRIMARY} w-full`}
+        >
+          ▸ load worked example (recovery drone)
+        </button>
+        <p className="mt-1.5 text-xs text-ink-3">
+          12 attestations · expected: <span className="text-navy">made_in_canada</span> · 58.4% · valid
+        </p>
+
+        <div className="my-3 border-t border-line" />
+
+        <button
+          type="button"
+          onClick={() => onVerify(tamperedExampleChain)}
+          className={`${BTN_GHOST} w-full`}
+        >
+          ⚠ load tampered example (upstream cost altered)
+        </button>
+        <p className="mt-1.5 text-xs text-ink-3">
+          Same chain, one upstream parent&apos;s cost changed after signing · expected:{" "}
+          <span className="text-red">parent_hash_mismatch</span> · designation{" "}
+          <span className="text-red">none</span> · invalid
+        </p>
+      </Panel>
+    </div>
   );
 }
 
-// ── User manual (control-room field guide: section index + content pane) ────
+// ── User manual (field guide: section index + content pane) ─────────────────
 // Documents the CURRENT (real challenge) contract and behaviour.
 const MANUAL_SECTIONS = [
   {
@@ -276,9 +294,9 @@ const MANUAL_SECTIONS = [
           cost by country, and returns one of three designations plus any integrity anomalies.
         </p>
         <ul className="list-disc space-y-1 pl-5">
-          <li><b className="text-signal">Product of Canada</b> — ≥ 98% Canadian cost + last transformation in Canada.</li>
-          <li><b className="text-signal">Made in Canada</b> — ≥ 51% Canadian cost + last transformation in Canada.</li>
-          <li><b className="text-alarm">None</b> — neither condition met.</li>
+          <li><b className="text-navy">Product of Canada</b> — ≥ 98% Canadian cost + last transformation in Canada.</li>
+          <li><b className="text-navy">Made in Canada</b> — ≥ 51% Canadian cost + last transformation in Canada.</li>
+          <li><b className="text-red">None</b> — neither condition met.</li>
         </ul>
       </>
     ),
@@ -290,14 +308,14 @@ const MANUAL_SECTIONS = [
       <>
         <p>A verification runs as a single stateless request:</p>
         <ol className="list-decimal space-y-1.5 pl-5">
-          <li>Load a chain and <b className="text-ink">POST</b> it to <code className="text-cyan">/verify</code> as <code className="text-cyan">{`{ product_attestation_id, attestations }`}</code>.</li>
-          <li>The backend builds the provenance DAG from each attestation&apos;s <code className="text-cyan">parents</code> (any order), guarding against cycles.</li>
+          <li>Load a chain and <b className="text-ink">POST</b> it to <code className="font-mono text-navy">/verify</code> as <code className="font-mono text-navy">{`{ product_attestation_id, attestations }`}</code>.</li>
+          <li>The backend builds the provenance DAG from each attestation&apos;s <code className="font-mono text-navy">parents</code> (any order), guarding against cycles.</li>
           <li>Each node is checked: signature (Ed25519, registry key), known issuer, parent-hash binding, dangling parents, replay.</li>
           <li><b className="text-ink">Mass-balance:</b> a node may not consume more of an input than was produced upstream.</li>
-          <li><b className="text-ink">Cost attribution:</b> each node&apos;s cost (material_cad + labour_cost_cad) is summed by <code className="text-cyan">performed_in_country</code>.</li>
+          <li><b className="text-ink">Cost attribution:</b> each node&apos;s cost (material_cad + labour_cost_cad) is summed by <code className="font-mono text-navy">performed_in_country</code>.</li>
           <li><b className="text-ink">Verdict:</b> the 98% / 51% thresholds apply <i>and</i> the last substantial transformation must be in Canada.</li>
         </ol>
-        <p className="text-faint">
+        <p className="text-ink-3">
           The response carries no graph; this terminal draws the chain-of-custody view from the
           attestations it submitted.
         </p>
@@ -315,7 +333,7 @@ const MANUAL_SECTIONS = [
         </p>
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-line text-left text-faint">
+            <tr className="border-b border-line text-left text-ink-3">
               <th className="py-1.5 pr-3">Designation</th>
               <th className="pr-3">Canadian cost</th>
               <th>Last transformation</th>
@@ -323,17 +341,17 @@ const MANUAL_SECTIONS = [
           </thead>
           <tbody>
             <tr className="border-b border-line">
-              <td className="py-1.5 pr-3 font-medium text-signal">product_of_canada</td>
+              <td className="py-1.5 pr-3 font-medium text-navy">product_of_canada</td>
               <td className="pr-3">≥ 98%</td>
               <td>in Canada</td>
             </tr>
             <tr className="border-b border-line">
-              <td className="py-1.5 pr-3 font-medium text-signal">made_in_canada</td>
+              <td className="py-1.5 pr-3 font-medium text-navy">made_in_canada</td>
               <td className="pr-3">≥ 51%</td>
               <td>in Canada</td>
             </tr>
             <tr>
-              <td className="py-1.5 pr-3 font-medium text-alarm">none</td>
+              <td className="py-1.5 pr-3 font-medium text-red">none</td>
               <td className="pr-3">&lt; 51%</td>
               <td>or not in Canada</td>
             </tr>
@@ -348,13 +366,13 @@ const MANUAL_SECTIONS = [
     body: (
       <>
         <p>
-          Each attestation&apos;s own cost is <code className="text-cyan">material_cad + labour_cost_cad</code>,
-          attributed to its <code className="text-cyan">performed_in_country</code>. The Canadian percentage
+          Each attestation&apos;s own cost is <code className="font-mono text-navy">material_cad + labour_cost_cad</code>,
+          attributed to its <code className="font-mono text-navy">performed_in_country</code>. The Canadian percentage
           is a flat sum of Canadian cost over total cost across all attestations.
           <b className="text-ink"> labour_hours is not a cost</b> and does not enter the percentage.
         </p>
         <p>
-          The <b className="text-cyan">calculation detail</b> button on a result opens a breakdown:
+          The <b className="text-navy">calculation detail</b> button on a result opens a breakdown:
           a cost-by-country share and a per-component contribution chart, derived locally from the
           submitted chain so you can see how the percentage was reached.
         </p>
@@ -367,15 +385,15 @@ const MANUAL_SECTIONS = [
     body: (
       <>
         <p>
-          The verifier returns <code className="text-cyan">chain_valid</code> plus an{" "}
-          <code className="text-cyan">anomalies</code> list. Each anomaly is{" "}
-          <code className="text-cyan">{`{ type, attestation_id, details }`}</code>. The{" "}
-          <code className="text-cyan">type</code> is a free-form snake_case label — these are the
+          The verifier returns <code className="font-mono text-navy">chain_valid</code> plus an{" "}
+          <code className="font-mono text-navy">anomalies</code> list. Each anomaly is{" "}
+          <code className="font-mono text-navy">{`{ type, attestation_id, details }`}</code>. The{" "}
+          <code className="font-mono text-navy">type</code> is a free-form snake_case label — these are the
           common ones, but the set is not exhaustive:
         </p>
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-line text-left text-faint">
+            <tr className="border-b border-line text-left text-ink-3">
               <th className="py-1.5 pr-3">type</th>
               <th>Meaning</th>
             </tr>
@@ -392,8 +410,8 @@ const MANUAL_SECTIONS = [
               ["unit_mismatch", "consumed unit ≠ parent output unit"],
             ].map(([r, m]) => (
               <tr key={r} className="border-b border-line align-top">
-                <td className="py-1.5 pr-3 font-mono text-xs text-cyan">{r}</td>
-                <td className="text-dim">{m}</td>
+                <td className="py-1.5 pr-3 font-mono text-xs text-navy">{r}</td>
+                <td className="text-ink-2">{m}</td>
               </tr>
             ))}
           </tbody>
@@ -409,7 +427,7 @@ const MANUAL_SECTIONS = [
         <p>An attestation is the signed unit of provenance (challenge schema v1.0):</p>
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-line text-left text-faint">
+            <tr className="border-b border-line text-left text-ink-3">
               <th className="py-1.5 pr-3">Field</th>
               <th className="pr-3">Type</th>
               <th>Notes</th>
@@ -428,14 +446,14 @@ const MANUAL_SECTIONS = [
               ["signature", "{ algorithm, value }", "ed25519, base64 over canonical bytes (signature excluded)"],
             ].map(([f, t, n]) => (
               <tr key={f} className="border-b border-line align-top">
-                <td className="py-1.5 pr-3 font-mono text-xs text-cyan">{f}</td>
-                <td className="pr-3 text-dim">{t}</td>
-                <td className="text-faint">{n}</td>
+                <td className="py-1.5 pr-3 font-mono text-xs text-navy">{f}</td>
+                <td className="pr-3 text-ink-2">{t}</td>
+                <td className="text-ink-3">{n}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <pre className="overflow-x-auto border border-line bg-base p-3 text-xs text-signal/90">{`{
+        <pre className="overflow-x-auto rounded-btn border border-line-2 bg-paper-2 p-3 font-mono text-xs text-navy">{`{
   "attestation_id": "att-anchor-0005",
   "version": "1.0",
   "supplier_id": "sup-avss-corp",
@@ -459,9 +477,9 @@ const MANUAL_SECTIONS = [
         <p>
           Each supplier holds an <b className="text-ink">Ed25519 key pair</b>. The private key signs
           attestations; the public key is registered, once, into the supplier registry. The verifier
-          looks up each <code className="text-cyan">supplier_id</code> to get the trusted public key
-          and verifies <code className="text-cyan">signature.value</code> against the attestation&apos;s
-          canonical bytes (with <code className="text-cyan">signature</code> excluded).
+          looks up each <code className="font-mono text-navy">supplier_id</code> to get the trusted public key
+          and verifies <code className="font-mono text-navy">signature.value</code> against the attestation&apos;s
+          canonical bytes (with <code className="font-mono text-navy">signature</code> excluded).
         </p>
         <p>
           A valid signature is necessary but not sufficient: all private keys ship with the kit, so a
@@ -479,12 +497,12 @@ const MANUAL_SECTIONS = [
         <p>
           The provenance graph is the supply chain you submitted. Each node is a supplier
           contribution; arrows point from an input to the consumer that used it. It is drawn locally
-          from the attestations&apos; <code className="text-cyan">parents</code> references.
+          from the attestations&apos; <code className="font-mono text-navy">parents</code> references.
         </p>
         <ul className="list-disc space-y-1 pl-5">
-          <li><span className="font-medium text-signal">Green</span> — Canadian, no anomaly.</li>
-          <li><span className="font-medium text-dim">Grey</span> — foreign, no anomaly.</li>
-          <li><span className="font-medium text-alarm">Red</span> — flagged by an anomaly in the response.</li>
+          <li><span className="font-medium text-navy">Navy</span> — Canadian, no anomaly.</li>
+          <li><span className="font-medium text-ink-2">Grey</span> — imported, no anomaly.</li>
+          <li><span className="font-medium text-red">Red</span> — flagged by an anomaly in the response.</li>
         </ul>
       </>
     ),
@@ -499,13 +517,13 @@ const MANUAL_SECTIONS = [
           changes the designation. Value-add = labour share of a component&apos;s own cost.
         </p>
         <ul className="list-disc space-y-1 pl-5">
-          <li><b className="text-alarm">critical</b> — a substantial transformation or high value-add (key IP).</li>
+          <li><b className="text-navy">critical</b> — a substantial transformation or high value-add (key IP).</li>
           <li><b className="text-ink">standard</b> — moderate transformation.</li>
-          <li><b className="text-signal">commodity</b> — a raw-material input with little value-add.</li>
+          <li><b className="text-ink-2">commodity</b> — a raw-material input with little value-add.</li>
         </ul>
         <p>
-          A <b className="text-amber">critical</b> component made outside Canada is flagged
-          <b className="text-amber"> ⚠ offshore</b> — a strategic dependency worth watching.
+          A <b className="text-red">critical</b> component made outside Canada is flagged
+          <b className="text-red"> ⚠ offshore</b> — a strategic dependency worth watching.
         </p>
       </>
     ),
@@ -516,13 +534,13 @@ function Manual({ onClose }) {
   const [active, setActive] = useState(MANUAL_SECTIONS[0].id);
   const section = MANUAL_SECTIONS.find((s) => s.id === active) || MANUAL_SECTIONS[0];
   return (
-    <div className="fixed inset-0 z-50 flex bg-base/80 p-4 backdrop-blur sm:p-8" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex bg-ink/40 p-4 backdrop-blur-sm sm:p-8" onClick={onClose}>
       <div
-        className="mx-auto flex h-full max-h-[88vh] w-full max-w-4xl overflow-hidden border border-line-bright bg-panel shadow-[0_0_60px_-20px_var(--color-cyan)]"
+        className="mx-auto flex h-full max-h-[88vh] w-full max-w-4xl overflow-hidden rounded-card border border-line-2 bg-paper shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <aside className="w-56 shrink-0 overflow-y-auto border-r border-line bg-elevated p-3">
-          <div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan">
+        <aside className="w-56 shrink-0 overflow-y-auto border-r border-line bg-paper-2 p-3">
+          <div className="px-2 pb-2 font-mono text-[10px] font-semibold uppercase tracking-wider text-navy">
             Field guide
           </div>
           <nav className="space-y-0.5">
@@ -532,10 +550,10 @@ function Manual({ onClose }) {
                 type="button"
                 onClick={() => setActive(s.id)}
                 className={
-                  "block w-full px-3 py-1.5 text-left text-sm transition " +
+                  "block w-full rounded-btn px-3 py-1.5 text-left text-sm transition " +
                   (active === s.id
-                    ? "border-l-2 border-cyan bg-cyan/10 font-medium text-cyan"
-                    : "border-l-2 border-transparent text-dim hover:bg-line/40 hover:text-ink")
+                    ? "bg-tint-navy font-medium text-navy"
+                    : "text-ink-2 hover:bg-paper hover:text-ink")
                 }
               >
                 {s.title}
@@ -549,14 +567,14 @@ function Manual({ onClose }) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="absolute right-4 top-4 border border-line px-2 py-0.5 text-dim transition hover:border-alarm hover:text-alarm"
+            className="absolute right-4 top-4 rounded-btn border border-line-2 px-2 py-0.5 text-ink-2 transition hover:border-red hover:text-red"
           >
             ✕
           </button>
-          <h2 className="text-lg font-semibold uppercase tracking-[0.12em] text-ink">
+          <h2 className="text-lg font-semibold text-navy">
             {section.title}
           </h2>
-          <div className="prose-sans mt-3 space-y-3 text-sm leading-relaxed text-dim">
+          <div className="mt-3 space-y-3 text-sm leading-relaxed text-ink-2">
             {section.body}
           </div>
         </div>
@@ -570,8 +588,8 @@ function CostDetailModal({ result, cost, onClose }) {
   const byCountry = cost?.byCountry || {};
   const pctOf = (c) => (total ? Math.round(((c || 0) / total) * 1000) / 10 : 0);
 
-  // Cost-by-country share via conic-gradient (CA = signal green, others cycle).
-  const palette = ["#46d6f0", "#f5b13d", "#9a6cf0", "#7e8e9a", "#f0414f"];
+  // Cost-by-country share via conic-gradient (CA = navy, others red/grey shades).
+  const palette = ["#d52b1e", "#b4554e", "#9aa0a6", "#5c6670", "#cdd2d7"];
   let acc = 0;
   let other = 0;
   const slices = Object.entries(byCountry)
@@ -580,7 +598,7 @@ function CostDetailModal({ result, cost, onClose }) {
       const start = total ? (acc / total) * 360 : 0;
       acc += c;
       const end = total ? (acc / total) * 360 : 0;
-      const color = country === "CA" ? "#34e8a0" : palette[other++ % palette.length];
+      const color = country === "CA" ? "#26374a" : palette[other++ % palette.length];
       return { country, c, start, end, color };
     });
   const gradient =
@@ -592,46 +610,46 @@ function CostDetailModal({ result, cost, onClose }) {
   const maxContrib = Math.max(1, ...nodes.map((n) => n.cad || 0));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/80 p-4 backdrop-blur" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="max-h-[85vh] w-full max-w-2xl overflow-y-auto border border-line-bright bg-panel shadow-[0_0_60px_-20px_var(--color-cyan)]"
+        className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-card border border-line-2 bg-paper shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-center justify-between border-b border-line px-5 py-3">
-          <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-cyan">
+          <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-navy">
             calculation detail
           </span>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="border border-line px-2 py-0.5 text-dim transition hover:border-alarm hover:text-alarm"
+            className="rounded-btn border border-line-2 px-2 py-0.5 text-ink-2 transition hover:border-red hover:text-red"
           >
             ✕
           </button>
         </header>
 
         <div className="p-5">
-          <p className="prose-sans text-sm text-dim">
+          <p className="text-sm text-ink-2">
             Each component&apos;s cost (material + labour), attributed to where the work happened.
             Derived locally from the submitted chain; the headline percentage is the backend&apos;s.
           </p>
 
-          <div className="mt-4 border border-line bg-base p-4 text-center">
-            <div className="text-3xl font-semibold tabular-nums text-signal glow-signal">
+          <div className="mt-4 rounded-btn border border-line-2 bg-paper-2 p-4 text-center">
+            <div className="text-3xl font-semibold tabular-nums text-navy">
               {formatPct(result.canadian_content_percentage)}
             </div>
-            <div className="mt-1 text-sm text-dim">
+            <div className="mt-1 text-sm text-ink-2">
               {formatCad(cost?.canadianCad)} Canadian of {formatCad(total)} total
             </div>
-            <div className="mt-1 text-[11px] uppercase tracking-[0.12em] text-faint">
+            <div className="mt-1 font-mono text-[11px] uppercase tracking-wider text-ink-3">
               Product of Canada ≥ 98% · Made in Canada ≥ 51% (last transformation in Canada)
             </div>
           </div>
 
           <div className="mt-5 flex items-center gap-5">
             <div
-              className="h-32 w-32 shrink-0 rounded-full ring-1 ring-line"
+              className="h-32 w-32 shrink-0 rounded-full ring-1 ring-line-2"
               style={{ background: gradient }}
               role="img"
               aria-label="Cost by country"
@@ -639,9 +657,9 @@ function CostDetailModal({ result, cost, onClose }) {
             <ul className="space-y-1.5 text-sm">
               {slices.map((s) => (
                 <li key={s.country} className="flex items-center gap-2">
-                  <span className="inline-block h-3 w-3" style={{ backgroundColor: s.color }} />
+                  <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: s.color }} />
                   <span className="font-medium text-ink">{countryName(s.country)}</span>
-                  <span className="text-dim">
+                  <span className="text-ink-2">
                     {formatCad(s.c)} · {pctOf(s.c)}%
                   </span>
                 </li>
@@ -649,30 +667,29 @@ function CostDetailModal({ result, cost, onClose }) {
             </ul>
           </div>
 
-          <h3 className="mt-6 mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-cyan">
+          <h3 className="mt-6 mb-2 font-mono text-[11px] font-medium uppercase tracking-wider text-navy">
             Per-component contribution
           </h3>
           <ul className="space-y-2.5">
             {nodes.map((n) => {
               const c = n.cad || 0;
-              const zero = c === 0;
-              const barColor = zero
-                ? "var(--color-dim)"
+              const barColor = c === 0
+                ? "var(--color-ink-3)"
                 : n.country === "CA"
-                ? "var(--color-signal)"
-                : "var(--color-dim)";
+                ? "var(--color-navy)"
+                : "var(--color-ink-3)";
               return (
                 <li key={n.id}>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-ink">
                       {n.name}{" "}
-                      <span className="text-xs text-faint">· {n.supplier_id} · {n.country}</span>
+                      <span className="text-xs text-ink-3">· {n.supplier_id} · {n.country}</span>
                     </span>
-                    <span className="text-dim">
+                    <span className="text-ink-2">
                       {formatCad(c)} · {pctOf(c)}%
                     </span>
                   </div>
-                  <div className="mt-1 h-2 w-full overflow-hidden border border-line bg-base">
+                  <div className="mt-1 h-2 w-full overflow-hidden rounded-full border border-line bg-paper-2">
                     <div
                       className="h-full"
                       style={{ width: `${Math.round((c / maxContrib) * 100)}%`, backgroundColor: barColor }}
@@ -683,8 +700,8 @@ function CostDetailModal({ result, cost, onClose }) {
             })}
           </ul>
 
-          <p className="prose-sans mt-5 text-xs text-faint">
-            Green = Canadian cost · grey = foreign or zero-cost. These are the verified amounts the
+          <p className="mt-5 text-xs text-ink-3">
+            Navy = Canadian cost · grey = imported or zero-cost. These are the verified amounts the
             verdict was computed from.
           </p>
         </div>
@@ -698,16 +715,19 @@ function CriticalityPanel({ nodes }) {
   if (list.length === 0) return null;
   const order = ["critical", "standard", "commodity"];
   const tone = {
-    critical: "border-alarm/40 bg-alarm/10 text-alarm",
-    standard: "border-line bg-elevated text-ink",
-    commodity: "border-signal/40 bg-signal/10 text-signal",
+    critical: "border-line-2 bg-tint-navy text-navy",
+    standard: "border-line-2 bg-paper-2 text-ink",
+    commodity: "border-line-2 bg-paper-2 text-ink-2",
   };
   return (
-    <Panel label="strategic criticality" accent="cyan" right="advisory">
-      <p className="prose-sans text-sm text-dim">
+    <Panel label="strategic criticality" accent="navy" right="advisory">
+      <p className="text-sm text-ink-2">
         An advisory lens, separate from the legal verdict. Value-add = labour share of a
-        component&apos;s own cost. A <span className="font-medium text-amber">critical</span>{" "}
+        component&apos;s own cost. A <span className="font-medium text-navy">critical</span>{" "}
         component made outside Canada is the strategic risk to watch.
+      </p>
+      <p className="mt-1.5 text-[11px] text-ink-3">
+        Derived locally from the submitted chain — not returned or asserted by the verifier.
       </p>
       <ul className="mt-3 space-y-2">
         {order.flatMap((cls) =>
@@ -716,7 +736,7 @@ function CriticalityPanel({ nodes }) {
             .map((n) => (
               <li
                 key={n.id}
-                className={"flex items-center justify-between border px-3 py-2 text-sm " + tone[cls]}
+                className={"flex items-center justify-between rounded-btn border px-3 py-2 text-sm " + tone[cls]}
               >
                 <span className="flex items-center gap-2">
                   <span>
@@ -724,12 +744,12 @@ function CriticalityPanel({ nodes }) {
                     <span className="text-xs opacity-70">· {n.supplier_id} · {n.country}</span>
                   </span>
                   {cls === "critical" && n.country !== "CA" && (
-                    <span className="bg-amber/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-amber">
+                    <span className="rounded-chip bg-tint-red px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red">
                       ⚠ offshore
                     </span>
                   )}
                 </span>
-                <span className="text-[11px] font-semibold uppercase tracking-[0.1em]">
+                <span className="font-mono text-[11px] font-semibold uppercase tracking-wider">
                   {cls} · {Math.round((n.value_add_pct || 0) * 100)}% value-add
                 </span>
               </li>

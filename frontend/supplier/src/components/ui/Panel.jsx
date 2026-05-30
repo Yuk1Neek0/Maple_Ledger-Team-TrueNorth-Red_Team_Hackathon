@@ -1,46 +1,43 @@
-// Instrument panel: a framed surface with a bracketed header label and corner
-// ticks. Shared with the purchaser app — the visual backbone of the UI.
+// Card: a clean paper surface with a mono section label. The structural
+// primitive shared by every section. Shared verbatim with the purchaser app.
 
 const ACCENT = {
-  cyan: "text-cyan",
-  signal: "text-signal",
-  amber: "text-amber",
-  alarm: "text-alarm",
-  dim: "text-dim",
+  navy: "text-navy",
+  ink: "text-ink",
+  ok: "text-ok",
+  red: "text-red",
+  muted: "text-ink-3",
+  // legacy accent names still passed by some call sites → map to the light system
+  cyan: "text-navy",
+  signal: "text-ok",
+  amber: "text-navy",
+  alarm: "text-red",
+  dim: "text-ink-3",
 };
-
-function CornerTicks() {
-  const base = "pointer-events-none absolute h-2 w-2 border-line-bright";
-  return (
-    <>
-      <span className={`${base} left-0 top-0 border-l border-t`} />
-      <span className={`${base} right-0 top-0 border-r border-t`} />
-      <span className={`${base} bottom-0 left-0 border-b border-l`} />
-      <span className={`${base} bottom-0 right-0 border-b border-r`} />
-    </>
-  );
-}
 
 export default function Panel({
   label,
-  accent = "cyan",
+  accent = "navy",
   right = null,
   children,
   bodyClass = "p-4",
   className = "",
 }) {
   return (
-    <section className={`relative border border-line bg-panel ${className}`}>
-      <CornerTicks />
+    <section
+      className={`rounded-card border border-line-2 bg-paper ${className}`}
+    >
       {(label || right) && (
-        <header className="flex items-center justify-between border-b border-line px-3 py-1.5">
+        <header className="flex items-center justify-between border-b border-line px-4 py-2.5">
           <span
-            className={`text-[11px] font-medium uppercase tracking-[0.18em] ${ACCENT[accent] || ACCENT.cyan}`}
+            className={`font-mono text-[11px] font-medium uppercase tracking-wider ${ACCENT[accent] || ACCENT.navy}`}
           >
             {label}
           </span>
           {right && (
-            <span className="text-[11px] uppercase tracking-[0.14em] text-dim">{right}</span>
+            <span className="font-mono text-[11px] uppercase tracking-wider text-ink-3">
+              {right}
+            </span>
           )}
         </header>
       )}
@@ -49,14 +46,35 @@ export default function Panel({
   );
 }
 
-// A small status node: ● LABEL, blinking when live.
-export function StatusNode({ tone = "signal", label, blink = false }) {
-  const dot = { signal: "bg-signal", amber: "bg-amber", alarm: "bg-alarm", cyan: "bg-cyan", dim: "bg-faint" };
-  const txt = { signal: "text-signal", amber: "text-amber", alarm: "text-alarm", cyan: "text-cyan", dim: "text-dim" };
+// A small status node: ● LABEL.
+export function StatusNode({ tone = "ok", label, blink = false }) {
+  const dot = {
+    ok: "bg-ok",
+    signal: "bg-ok",
+    navy: "bg-navy",
+    red: "bg-red",
+    alarm: "bg-red",
+    amber: "bg-navy",
+    cyan: "bg-navy",
+    dim: "bg-ink-3",
+  };
+  const txt = {
+    ok: "text-ok",
+    signal: "text-ok",
+    navy: "text-navy",
+    red: "text-red",
+    alarm: "text-red",
+    amber: "text-navy",
+    cyan: "text-navy",
+    dim: "text-ink-3",
+  };
   return (
-    <span className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.14em]">
-      <span className={`inline-block h-1.5 w-1.5 rounded-full ${dot[tone]} ${blink ? "blink" : ""}`} />
-      <span className={txt[tone]}>{label}</span>
+    <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider">
+      <span
+        className={`inline-block h-1.5 w-1.5 rounded-full ${dot[tone] || dot.ok}`}
+        aria-hidden
+      />
+      <span className={txt[tone] || txt.ok}>{label}</span>
     </span>
   );
 }

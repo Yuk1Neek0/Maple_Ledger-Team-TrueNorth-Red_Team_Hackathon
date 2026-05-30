@@ -12,7 +12,9 @@ import {
 import { submitAttestation, BACKEND_URL } from "./lib/api.js";
 import { runCanonicalSelfTest } from "./lib/canonical.test.js";
 import { DEMO_IDENTITIES } from "./devIdentities.js";
-import Panel, { StatusNode } from "./components/ui/Panel.jsx";
+import Panel from "./components/ui/Panel.jsx";
+import Shell from "./components/ui/Shell.jsx";
+import AttestationShare from "./components/AttestationShare.jsx";
 
 // Steps of the supplier flow.
 const STEP_FORM = "form";
@@ -26,16 +28,27 @@ const ACTION_TYPES = [
   "final_integration",
 ];
 
-// Shared control-surface button styles.
+// Step-type pill copy — a short label for each schema action_type.
+const STEP_TYPE_LABEL = {
+  raw_material_supply: "SOURCE",
+  component_manufacture: "TRANSFORM",
+  subassembly: "ASSEMBLE",
+  final_integration: "INTEGRATE",
+};
+
+// Labour hours at or above this imply a substantial transformation (advisory).
+const SUBSTANTIAL_TRANSFORM_HOURS = 4;
+
+// Shared control-surface styles (Maple Ledger light).
 const BTN_CYAN =
-  "inline-flex items-center justify-center gap-2 border border-cyan bg-cyan/10 px-5 py-2 text-sm font-semibold uppercase tracking-[0.14em] text-cyan transition hover:bg-cyan/20 disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex items-center justify-center gap-2 rounded-btn bg-navy px-5 py-2 text-sm font-medium text-paper transition hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-40";
 const BTN_SIGNAL =
-  "inline-flex items-center justify-center gap-2 border border-signal/60 bg-signal/10 px-6 py-2 text-sm font-semibold uppercase tracking-[0.14em] text-signal transition hover:bg-signal/20 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-btn bg-navy px-6 py-2 text-sm font-semibold text-paper transition hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-50";
 const BTN_GHOST =
-  "inline-flex items-center justify-center gap-2 border border-line px-5 py-2 text-sm font-medium uppercase tracking-[0.14em] text-dim transition hover:border-line-bright hover:text-ink disabled:opacity-40";
+  "inline-flex items-center justify-center gap-2 rounded-btn border border-line-2 bg-paper px-5 py-2 text-sm font-medium text-ink transition hover:bg-paper-2 disabled:opacity-40";
 
 const inputClass =
-  "mt-1 w-full border border-line bg-base px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-cyan focus:outline-none";
+  "mt-1 w-full rounded-btn border border-line-2 bg-paper px-3 py-2 text-sm text-ink placeholder:text-ink-3 focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy/30";
 
 // A random att- UUID v4 for a fresh attestation id.
 function newAttestationId() {
@@ -120,11 +133,11 @@ function buildPayload(form) {
 function Field({ label, hint, children }) {
   return (
     <label className="block text-left">
-      <span className="block text-[11px] font-medium uppercase tracking-[0.12em] text-dim">
+      <span className="block font-mono text-[11px] font-medium uppercase tracking-wider text-ink-3">
         {label}
       </span>
       {children}
-      {hint && <span className="mt-1 block text-xs text-faint">{hint}</span>}
+      {hint && <span className="mt-1 block text-xs text-ink-3">{hint}</span>}
     </label>
   );
 }
@@ -137,7 +150,7 @@ export default function App() {
   const [keyError, setKeyError] = useState("");
   const [submitState, setSubmitState] = useState({ status: "idle" }); // idle|signing|submitting|done|error
   const [result, setResult] = useState(null);
-  const [selfTest] = useState(() => {
+  useState(() => {
     const r = runCanonicalSelfTest();
     if (r.pass) {
       console.log("[canonical self-test] PASS — byte-parity with reference_lib");
@@ -263,36 +276,6 @@ export default function App() {
     }
   }
 
-  // Apply an AI-drafted attestation to the form. The human still reviews every
-  // field and signs — the draft is advisory.
-  function applyDraft(draft) {
-    setForm((f) => ({
-      ...f,
-      supplier_id: draft.supplier_id ?? f.supplier_id,
-      action_type: ACTION_TYPES.includes(draft.action_type) ? draft.action_type : f.action_type,
-      performed_in_country: draft.performed_in_country ?? f.performed_in_country,
-      output_name: draft.output?.name ?? f.output_name,
-      output_quantity:
-        draft.output?.quantity_produced != null
-          ? String(draft.output.quantity_produced)
-          : f.output_quantity,
-      output_unit: draft.output?.unit ?? f.output_unit,
-      material_cad: draft.costs?.material_cad != null ? String(draft.costs.material_cad) : f.material_cad,
-      labour_hours: draft.costs?.labour_hours != null ? String(draft.costs.labour_hours) : f.labour_hours,
-      labour_cost_cad:
-        draft.costs?.labour_cost_cad != null ? String(draft.costs.labour_cost_cad) : f.labour_cost_cad,
-      timestamp: draft.timestamp ?? f.timestamp,
-      parents: Array.isArray(draft.parents)
-        ? draft.parents.map((p) => ({
-            attestation_id: p.attestation_id ?? "",
-            content_hash: p.content_hash ?? "",
-            quantity_consumed: String(p.quantity_consumed ?? "1"),
-            unit: p.unit ?? "units",
-          }))
-        : f.parents,
-    }));
-  }
-
   function resetAll() {
     setForm(defaultForm());
     setResult(null);
@@ -303,38 +286,27 @@ export default function App() {
   const STEP_LABEL = { form: "1 · author", confirm: "2 · confirm", done: "3 · issued" };
 
   return (
-    <div className="flex min-h-full flex-col">
-      <div className="h-0.5 w-full bg-gradient-to-r from-maple via-maple/40 to-transparent" />
-
-      <header className="sticky top-0 z-40 border-b border-line bg-panel/85 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-2.5">
-          <div className="flex items-center gap-3">
-            <img src="/favicon.svg" alt="" aria-hidden className="h-6 w-6" />
-            <div className="leading-tight">
-              <div className="text-sm font-semibold tracking-[0.22em] text-ink">MAPLE LEDGER</div>
-              <div className="text-[10px] uppercase tracking-[0.24em] text-dim">
-                issuing console · attestation signer
-              </div>
-            </div>
-          </div>
-          <SelfTestBadge selfTest={selfTest} />
+    <Shell
+      active="supplier"
+      context="supplier · attestation signer"
+      backend={BACKEND_URL.replace(/^https?:\/\//, "")}
+    >
+      <div className="mx-auto w-full max-w-3xl px-6 pt-6">
+        <div className="flex items-center gap-4 font-mono text-[11px] uppercase tracking-wider text-ink-3">
+          {Object.entries(STEP_LABEL).map(([k, v]) => (
+            <span key={k} className={step === k ? "text-navy" : ""}>
+              {step === k ? "▸ " : ""}
+              {v}
+            </span>
+          ))}
         </div>
-        <div className="border-t border-line bg-base/60 px-6 py-1.5">
-          <div className="mx-auto flex max-w-3xl items-center gap-4 text-[10px] uppercase tracking-[0.18em] text-faint">
-            {Object.entries(STEP_LABEL).map(([k, v]) => (
-              <span key={k} className={step === k ? "text-cyan" : ""}>
-                {step === k ? "▸ " : ""}
-                {v}
-              </span>
-            ))}
-          </div>
-        </div>
-      </header>
+      </div>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-8">
+      <main className="mx-auto w-full max-w-3xl px-6 py-8">
         {step === STEP_FORM && (
           <div className="space-y-6">
-            <AuthoringTools onLoadIdentity={loadDemoIdentity} onApplyDraft={applyDraft} />
+            <SigningAs supplierId={form.supplier_id} keypair={keypair} />
+            <IdentityLoader onLoadIdentity={loadDemoIdentity} />
             <FormStep
               form={form}
               payload={payload}
@@ -370,60 +342,37 @@ export default function App() {
 
         {step === STEP_DONE && <DoneStep result={result} onReset={resetAll} />}
       </main>
-
-      <footer className="mx-auto w-full max-w-3xl px-6 pb-10 text-center text-[11px] uppercase tracking-[0.16em] text-faint">
-        backend · <code className="text-dim">{BACKEND_URL}/verify</code>
-      </footer>
-    </div>
+    </Shell>
   );
 }
 
-function SelfTestBadge({ selfTest }) {
-  if (!selfTest) return null;
-  const ok = selfTest.pass;
+// Signing-as banner: the issuing identity and the public key the verifier will
+// check the signature against. The supplier_id maps to a registry key; the
+// signature only verifies if that key is the trusted one on file.
+function SigningAs({ supplierId, keypair }) {
+  const fp = keypair?.publicB64 ? keypair.publicB64.slice(0, 22) + "…" : "—";
   return (
-    <span
-      title={ok ? "Canonical bytes match reference_lib (content_hash fixtures verified)" : "Canonicalization mismatch — see console"}
-      className={"border px-2.5 py-1 " + (ok ? "border-signal/40 bg-signal/10" : "border-alarm/40 bg-alarm/10")}
-    >
-      <StatusNode tone={ok ? "signal" : "alarm"} label={`canonical ${ok ? "pass" : "fail"}`} blink={ok} />
-    </span>
+    <section className="rounded-card border border-line-2 bg-paper p-4">
+      <div className="font-mono text-[11px] uppercase tracking-wider text-ink-3">
+        Signing as
+      </div>
+      <div className="mt-0.5 text-lg font-semibold text-navy">{supplierId || "—"}</div>
+      <div className="mt-3 border-t border-line pt-2.5 font-mono text-[11px] text-ink-2">
+        <span className="uppercase tracking-wider text-ink-3">public key</span>{" "}
+        <span className="text-navy">{fp}</span>
+      </div>
+    </section>
   );
 }
 
-function AuthoringTools({ onLoadIdentity, onApplyDraft }) {
+// IdentityLoader: pick a kit supplier whose private key the registry trusts, so
+// the signed attestation actually verifies against POST /verify.
+function IdentityLoader({ onLoadIdentity }) {
   const ids = Object.keys(DEMO_IDENTITIES);
-  const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
-
-  async function draft() {
-    setBusy(true);
-    setMsg("");
-    try {
-      const res = await fetch(`${BACKEND_URL}/draft`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setMsg(data.detail || `Draft unavailable (HTTP ${res.status}).`);
-        return;
-      }
-      onApplyDraft(data.draft || {});
-      setMsg(data.notes || "Draft applied — review every field before signing.");
-    } catch (e) {
-      setMsg(`Could not reach backend: ${e.message}`);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
-    <Panel label="authoring tools" accent="cyan">
+    <Panel label="identity" accent="navy">
       <label className="block text-left">
-        <span className="block text-[11px] font-medium uppercase tracking-[0.12em] text-dim">
+        <span className="block font-mono text-[11px] font-medium uppercase tracking-wider text-ink-3">
           Load demo identity
         </span>
         <select className={inputClass} defaultValue="" onChange={(e) => e.target.value && onLoadIdentity(e.target.value)}>
@@ -436,27 +385,38 @@ function AuthoringTools({ onLoadIdentity, onApplyDraft }) {
             </option>
           ))}
         </select>
-        <span className="mt-1 block text-xs text-faint">
+        <span className="mt-1 block text-xs text-ink-3">
           Loads a kit private key the registry trusts, so the attestation&apos;s signature verifies.
         </span>
       </label>
-
-      <h3 className="mt-5 mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-cyan">
-        Draft with AI <span className="font-normal text-faint">(advisory — you review &amp; sign)</span>
-      </h3>
-      <textarea
-        className={inputClass + " prose-sans h-20"}
-        placeholder="e.g. We CNC-milled a RAVEN airframe in Ontario, 6.5 labour hours at $80/hr, from Canadian 6061 billet."
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-      />
-      <div className="mt-2 flex items-center gap-3">
-        <button type="button" onClick={draft} disabled={busy || !text.trim()} className={BTN_CYAN}>
-          {busy ? "drafting…" : "▸ draft with ai"}
-        </button>
-        {msg && <span className="prose-sans text-xs text-dim">{msg}</span>}
-      </div>
     </Panel>
+  );
+}
+
+// Step-type pill group — selects form.action_type with a TRANSFORM-style pill.
+function StepTypePills({ value, onChange }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {ACTION_TYPES.map((a) => {
+        const selected = a === value;
+        return (
+          <button
+            key={a}
+            type="button"
+            onClick={() => onChange(a)}
+            title={a}
+            className={
+              "rounded-chip px-3 py-1.5 font-mono text-[11px] font-medium uppercase tracking-wider transition " +
+              (selected
+                ? "bg-navy text-paper"
+                : "border border-line-2 bg-paper text-ink-2 hover:bg-paper-2")
+            }
+          >
+            {STEP_TYPE_LABEL[a] || a}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -480,9 +440,11 @@ function FormStep(props) {
   } = props;
   const payload = props.payload;
 
+  const isSubstantial = Number(form.labour_hours) >= SUBSTANTIAL_TRANSFORM_HOURS;
+
   return (
     <div className="space-y-6">
-      <Panel label="attestation" accent="cyan">
+      <Panel label="attestation" accent="navy">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Attestation ID" hint="att- + UUID, globally unique">
             <input className={inputClass + " font-mono"} value={form.attestation_id} onChange={(e) => update("attestation_id", e.target.value)} placeholder="att-…" />
@@ -496,19 +458,36 @@ function FormStep(props) {
           <Field label="Performed in country" hint="ISO-2 uppercase, e.g. CA">
             <input className={inputClass} value={form.performed_in_country} onChange={(e) => update("performed_in_country", e.target.value)} placeholder="CA" maxLength={2} />
           </Field>
-          <Field label="Action type">
-            <select className={inputClass} value={form.action_type} onChange={(e) => update("action_type", e.target.value)}>
-              {ACTION_TYPES.map((a) => (
-                <option key={a} value={a}>{a}</option>
-              ))}
-            </select>
-          </Field>
           <Field label="Timestamp" hint="ISO-8601 UTC, ends in Z">
             <input className={inputClass} value={form.timestamp} onChange={(e) => update("timestamp", e.target.value)} placeholder="2026-03-21T14:30:00Z" />
           </Field>
         </div>
 
-        <h3 className="mt-6 mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-dim">Output</h3>
+        <h3 className="mt-6 mb-2 font-mono text-[11px] font-medium uppercase tracking-wider text-ink-3">Step type</h3>
+        <StepTypePills value={form.action_type} onChange={(v) => update("action_type", v)} />
+
+        <div className="mt-4 flex items-center justify-between rounded-btn border border-line-2 bg-paper-2 px-3 py-2.5">
+          <div>
+            <div className="text-sm font-medium text-ink">Last substantial transformation</div>
+            <div className="text-xs text-ink-3">
+              Derived from labour ≥ {SUBSTANTIAL_TRANSFORM_HOURS}h · advisory, does not alter the signed payload
+            </div>
+          </div>
+          <span
+            className={
+              "inline-flex items-center gap-1.5 rounded-chip px-2.5 py-1 text-xs font-medium " +
+              (isSubstantial ? "bg-tint-ok text-ok" : "bg-tint-navy text-ink-2")
+            }
+          >
+            <span
+              className={"inline-block h-1.5 w-1.5 rounded-full " + (isSubstantial ? "bg-ok" : "bg-ink-3")}
+              aria-hidden
+            />
+            {isSubstantial ? "yes" : "no"}
+          </span>
+        </div>
+
+        <h3 className="mt-6 mb-2 font-mono text-[11px] font-medium uppercase tracking-wider text-ink-3">Output</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Field label="Name">
             <input className={inputClass} value={form.output_name} onChange={(e) => update("output_name", e.target.value)} placeholder="Parachute Recovery Assembly" />
@@ -521,12 +500,12 @@ function FormStep(props) {
           </Field>
         </div>
 
-        <h3 className="mt-6 mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-dim">Costs (CAD)</h3>
+        <h3 className="mt-6 mb-2 font-mono text-[11px] font-medium uppercase tracking-wider text-ink-3">Materials &amp; labour (CAD)</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Field label="Material (CAD)" hint="e.g. 360 or 1.2">
             <input className={inputClass} value={form.material_cad} onChange={(e) => update("material_cad", e.target.value)} inputMode="decimal" />
           </Field>
-          <Field label="Labour hours" hint="≥ 4 ⇒ substantial transformation">
+          <Field label="Labour hours" hint={`≥ ${SUBSTANTIAL_TRANSFORM_HOURS} ⇒ substantial transformation`}>
             <input className={inputClass} value={form.labour_hours} onChange={(e) => update("labour_hours", e.target.value)} inputMode="decimal" />
           </Field>
           <Field label="Labour cost (CAD)" hint="e.g. 520">
@@ -536,26 +515,26 @@ function FormStep(props) {
       </Panel>
 
       <Panel
-        label="parents consumed"
-        accent="cyan"
+        label="inputs consumed"
+        accent="navy"
         right={
-          <button type="button" onClick={addParent} className="text-cyan transition hover:text-ink">
+          <button type="button" onClick={addParent} className="font-mono uppercase tracking-wider text-navy transition hover:text-ink">
             + add parent
           </button>
         }
       >
         {form.parents.length === 0 && (
-          <p className="prose-sans text-sm text-faint">No parents (a raw_material_supply attestation has none).</p>
+          <p className="text-sm text-ink-3">No parents (a raw_material_supply attestation has none).</p>
         )}
         <div className="space-y-4">
           {form.parents.map((p, idx) => (
-            <div key={idx} className="border border-line bg-base/40 p-3">
+            <div key={idx} className="rounded-btn border border-line-2 bg-paper-2 p-3">
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-[11px] uppercase tracking-[0.12em] text-faint">Parent #{idx + 1}</span>
+                <span className="font-mono text-[11px] uppercase tracking-wider text-ink-3">Parent #{idx + 1}</span>
                 <button
                   type="button"
                   onClick={() => removeParent(idx)}
-                  className="border border-alarm/40 bg-alarm/10 px-2.5 py-1 text-xs font-medium uppercase tracking-[0.1em] text-alarm transition hover:bg-alarm/20"
+                  className="rounded-btn border border-line-2 bg-paper px-2.5 py-1 text-xs font-medium text-ink-2 transition hover:border-red hover:text-red"
                 >
                   remove
                 </button>
@@ -579,15 +558,15 @@ function FormStep(props) {
         </div>
       </Panel>
 
-      <Panel label="signing key" accent="cyan">
-        <p className="prose-sans text-sm text-dim">
+      <Panel label="signing key" accent="navy">
+        <p className="text-sm text-ink-2">
           A fresh Ed25519 keypair is generated in your browser. You may paste a 32-byte private key
           (64 hex chars or base64) instead — the kit ships base64 seeds.
         </p>
         <dl className="mt-3 space-y-1 text-xs">
           <div className="break-all">
-            <span className="font-medium uppercase tracking-[0.1em] text-faint">public key (base64): </span>
-            <code className="text-signal/90">{keypair?.publicB64}</code>
+            <span className="font-mono font-medium uppercase tracking-wider text-ink-3">public key (base64): </span>
+            <code className="font-mono text-navy">{keypair?.publicB64}</code>
           </div>
         </dl>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -604,31 +583,31 @@ function FormStep(props) {
             regenerate
           </button>
         </div>
-        {keyError && <p className="mt-2 text-sm text-alarm">{keyError}</p>}
+        {keyError && <p className="mt-2 text-sm text-red">{keyError}</p>}
       </Panel>
 
-      <Panel label="live preview" accent="cyan" right="what gets signed">
-        <p className="mb-1 text-[11px] uppercase tracking-[0.1em] text-faint">Assembled payload (signature excluded)</p>
-        <pre className="mb-4 overflow-x-auto border border-line bg-base p-3 text-xs text-ink">
+      <Panel label="attestation preview" accent="navy" right="what gets signed">
+        <p className="mb-1 font-mono text-[11px] uppercase tracking-wider text-ink-3">Assembled payload (signature excluded)</p>
+        <pre className="mb-4 overflow-x-auto rounded-btn border border-line-2 bg-paper-2 p-3 font-mono text-xs text-ink">
 {JSON.stringify(payload, null, 2)}
         </pre>
-        <p className="mb-1 text-[11px] uppercase tracking-[0.1em] text-faint">
+        <p className="mb-1 font-mono text-[11px] uppercase tracking-wider text-ink-3">
           Canonical bytes — one changed byte breaks the signature
         </p>
-        <pre className="overflow-x-auto border border-line bg-base p-3 text-xs text-signal/90">
+        <pre className="overflow-x-auto rounded-btn border border-line-2 bg-paper-2 p-3 font-mono text-xs text-navy">
 {canonical}
         </pre>
         {hashPreview && (
           <div className="mt-3 break-all text-xs">
-            <span className="font-medium uppercase tracking-[0.1em] text-faint">content_hash (children reference this): </span>
-            <code className="text-signal/90">{hashPreview}</code>
+            <span className="font-mono font-medium uppercase tracking-wider text-ink-3">content_hash (children reference this): </span>
+            <code className="font-mono text-navy">{hashPreview}</code>
           </div>
         )}
       </Panel>
 
       {!validation.valid && (
-        <Panel label="blocked" accent="alarm" right="fix to continue">
-          <ul className="list-disc space-y-1 pl-5 text-sm text-alarm">
+        <Panel label="blocked" accent="red" right="fix to continue">
+          <ul className="list-disc space-y-1 pl-5 text-sm text-red">
             {validation.errors.map((err, i) => (
               <li key={i}>{err}</li>
             ))}
@@ -649,29 +628,29 @@ function ConfirmStep({ payload, canonical, hashPreview, keypair, submitState, on
   const busy = submitState.status === "signing" || submitState.status === "submitting";
   return (
     <div className="space-y-6">
-      <Panel label="confirm before signing" accent="amber" right="irreversible">
-        <p className="prose-sans text-sm text-amber/90">
+      <Panel label="confirm before signing" accent="navy" right="irreversible">
+        <p className="text-sm text-ink-2">
           Review the exact payload below. Once signed, any change to a single byte invalidates the
           signature. This is what will be signed and submitted.
         </p>
       </Panel>
 
-      <Panel label="payload" accent="cyan">
-        <p className="mb-1 text-[11px] uppercase tracking-[0.1em] text-faint">Payload (signature excluded)</p>
-        <pre className="mb-4 overflow-x-auto border border-line bg-base p-3 text-xs text-ink">
+      <Panel label="payload" accent="navy">
+        <p className="mb-1 font-mono text-[11px] uppercase tracking-wider text-ink-3">Payload (signature excluded)</p>
+        <pre className="mb-4 overflow-x-auto rounded-btn border border-line-2 bg-paper-2 p-3 font-mono text-xs text-ink">
 {JSON.stringify(payload, null, 2)}
         </pre>
-        <p className="mb-1 text-[11px] uppercase tracking-[0.1em] text-faint">Canonical bytes</p>
-        <pre className="mb-4 overflow-x-auto border border-line bg-base p-3 text-xs text-signal/90">
+        <p className="mb-1 font-mono text-[11px] uppercase tracking-wider text-ink-3">Canonical bytes</p>
+        <pre className="mb-4 overflow-x-auto rounded-btn border border-line-2 bg-paper-2 p-3 font-mono text-xs text-navy">
 {canonical}
         </pre>
         {hashPreview && (
-          <p className="mb-3 break-all text-xs text-dim">
-            content_hash <code className="text-signal/90">{hashPreview}</code>
+          <p className="mb-3 break-all text-xs text-ink-2">
+            content_hash <code className="font-mono text-navy">{hashPreview}</code>
           </p>
         )}
-        <p className="text-xs text-dim">
-          Signing with public key <code className="break-all text-signal/90">{keypair?.publicB64}</code>
+        <p className="text-xs text-ink-2">
+          Signing with public key <code className="break-all font-mono text-navy">{keypair?.publicB64}</code>
         </p>
       </Panel>
 
@@ -696,8 +675,8 @@ function DoneStep({ result, onReset }) {
   if (result.fatal) {
     return (
       <div className="space-y-4">
-        <Panel label="signing failed" accent="alarm" right="halted">
-          <p className="prose-sans text-sm text-alarm">{result.fatal}</p>
+        <Panel label="signing failed" accent="red" right="halted">
+          <p className="text-sm text-red">{result.fatal}</p>
         </Panel>
         <button type="button" onClick={onReset} className={BTN_GHOST}>
           ↻ start over
@@ -712,50 +691,52 @@ function DoneStep({ result, onReset }) {
     <div className="space-y-6">
       <Panel
         label={submitted ? "attestation issued" : "signed locally"}
-        accent={submitted ? "signal" : "amber"}
+        accent={submitted ? "ok" : "navy"}
         right={submitted ? "verified by backend" : "backend unreachable"}
       >
         {submitted ? (
-          <div className="seal-in">
-            <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-signal">
-              <span className="blink">●</span> signed &amp; submitted to /verify
+          <div className="rounded-btn border border-ok/30 bg-tint-ok p-4">
+            <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-ok">
+              <span className="inline-block h-2 w-2 rounded-full bg-ok" aria-hidden /> ISSUED · signed &amp; submitted to /verify
             </div>
-            <p className="mt-3 text-[11px] uppercase tracking-[0.12em] text-faint">content hash</p>
-            <code className="mt-1 block break-all border border-signal/30 bg-base px-3 py-2 text-sm text-signal/90 glow-signal">
+            <p className="mt-3 font-mono text-[11px] uppercase tracking-wider text-ink-3">content hash</p>
+            <code className="mt-1 block break-all rounded-btn border border-line-2 bg-paper px-3 py-2 font-mono text-sm text-navy">
               {result.hash}
             </code>
             {verdict && (
               <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                <dt className="text-faint">designation</dt>
+                <dt className="text-ink-3">designation</dt>
                 <dd className="text-ink">{verdict.designation}</dd>
-                <dt className="text-faint">canadian content</dt>
-                <dd className="text-ink">{verdict.canadian_content_percentage}%</dd>
-                <dt className="text-faint">chain valid</dt>
-                <dd className={verdict.chain_valid ? "text-signal" : "text-alarm"}>
+                <dt className="text-ink-3">canadian content</dt>
+                <dd className="text-navy">{verdict.canadian_content_percentage}%</dd>
+                <dt className="text-ink-3">chain valid</dt>
+                <dd className={verdict.chain_valid ? "text-ok" : "text-red"}>
                   {String(verdict.chain_valid)}
                 </dd>
-                <dt className="text-faint">anomalies</dt>
+                <dt className="text-ink-3">anomalies</dt>
                 <dd className="text-ink">{(verdict.anomalies || []).length}</dd>
               </dl>
             )}
           </div>
         ) : (
-          <p className="prose-sans text-sm text-amber/90">
+          <p className="text-sm text-ink-2">
             The attestation was signed and verified locally, but the POST to the backend failed:{" "}
-            <span className="font-mono text-amber">{result.backendError}</span>. The signed body
+            <span className="font-mono text-red">{result.backendError}</span>. The signed body
             below is valid and ready to submit once the backend is reachable.
           </p>
         )}
       </Panel>
 
-      <Panel label="signed body" accent="cyan" right="signature: { algorithm, value }">
-        <p className="text-sm text-dim">
+      <AttestationShare signedBody={result.signedBody} />
+
+      <Panel label="signed body" accent="navy" right="signature: { algorithm, value }">
+        <p className="text-sm text-ink-2">
           Local signature verification:{" "}
-          <span className={result.verified ? "font-semibold text-signal" : "font-semibold text-alarm"}>
+          <span className={result.verified ? "font-semibold text-ok" : "font-semibold text-red"}>
             {result.verified ? "valid" : "INVALID"}
           </span>
         </p>
-        <pre className="mt-3 overflow-x-auto border border-line bg-base p-3 text-xs text-ink">
+        <pre className="mt-3 overflow-x-auto rounded-btn border border-line-2 bg-paper-2 p-3 font-mono text-xs text-ink">
 {JSON.stringify(result.signedBody, null, 2)}
         </pre>
       </Panel>

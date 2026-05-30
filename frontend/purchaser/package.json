@@ -7,13 +7,14 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test"
   },
   "dependencies": {
-    "@fontsource-variable/hanken-grotesk": "^5.1.0",
     "@fontsource-variable/jetbrains-mono": "^5.1.0",
+    "@fontsource-variable/space-grotesk": "^5.2.10",
     "@tailwindcss/vite": "^4.3.0",
-    "cytoscape": "^3.33.4",
+    "@xyflow/react": "^12.10.2",
     "html5-qrcode": "^2.3.8",
     "motion": "^11.18.0",
     "react": "^19.2.6",

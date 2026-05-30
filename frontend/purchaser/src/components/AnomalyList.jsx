@@ -1,50 +1,49 @@
-import { anomalyDetail, anomalyLabel } from "../labels.js";
+// AnomalyList: integrity findings from the verifier. Hard failures read loud
+// (red on tint-red), advisories read soft (muted ink). A clean chain shows a
+// single ok-green line.
 
-// Integrity findings rendered as a verification log. Each entry is a real
-// anomaly: { type, attestation_id, details }. The real contract treats every
-// listed anomaly as an integrity violation (chain_valid === false), so all rows
-// render as alarm-red [FAIL].
+import { anomalyLabel, anomalyAdvisory } from "../labels.js";
+
 export default function AnomalyList({ anomalies }) {
-  const list = Array.isArray(anomalies) ? anomalies : [];
-
+  const list = anomalies || [];
   if (list.length === 0) {
     return (
-      <div className="flex items-center gap-2 border border-signal/30 bg-signal/5 px-3 py-2.5 text-sm text-signal">
-        <span aria-hidden>✓</span>
-        <span className="uppercase tracking-[0.12em] text-[12px]">
-          no integrity issues · chain verified clean
-        </span>
+      <div className="flex items-center gap-2 rounded-btn border border-ok/30 bg-tint-ok px-3 py-2 text-sm text-ok">
+        <span className="inline-block h-1.5 w-1.5 rounded-full bg-ok" aria-hidden />
+        no anomalies — chain clean
       </div>
     );
   }
 
   return (
-    <div className="border border-line bg-base">
-      {list.map((a, i) => (
-        <LogRow key={`${a.attestation_id || "?"}-${i}`} anomaly={a} />
-      ))}
-    </div>
-  );
-}
-
-function LogRow({ anomaly }) {
-  const id = anomaly.attestation_id || "";
-  return (
-    <div className="border-b border-line bg-alarm/[0.06] px-3 py-2.5 last:border-b-0">
-      <div className="flex items-center gap-2 text-sm">
-        <span className="shrink-0 bg-alarm/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-alarm">
-          fail
-        </span>
-        <span className="font-medium text-alarm">{anomalyLabel(anomaly.type)}</span>
-        {id && (
-          <span className="ml-auto truncate font-mono text-xs text-faint" title={id}>
-            {id}
-          </span>
-        )}
-      </div>
-      <p className="prose-sans mt-1 pl-[2.85rem] text-xs leading-relaxed text-dim">
-        {anomalyDetail(anomaly)}
-      </p>
+    <div className="space-y-2">
+      {list.map((a, i) => {
+        const advisory = anomalyAdvisory(a);
+        // Hard failures are red; advisories are muted neutral (no red).
+        const textColor = advisory ? "text-ink-2" : "text-red";
+        const dotColor = advisory ? "bg-ink-3" : "bg-red";
+        const borderColor = advisory ? "border-line-2" : "border-red/40";
+        const bgColor = advisory ? "bg-paper-2" : "bg-tint-red";
+        return (
+          <div key={i} className={`rounded-btn border ${borderColor} ${bgColor} px-3 py-2`}>
+            <div className="flex items-center justify-between">
+              <span className={`flex items-center gap-2 text-sm font-medium ${textColor}`}>
+                <span className={`inline-block h-1.5 w-1.5 rounded-full ${dotColor}`} aria-hidden />
+                {anomalyLabel(a.type)}
+              </span>
+              {advisory && (
+                <span className="font-mono text-[10px] uppercase tracking-wider text-ink-3">advisory</span>
+              )}
+            </div>
+            {a.attestation_id && (
+              <div className="mt-1 pl-3.5 font-mono text-xs text-ink-2">{a.attestation_id}</div>
+            )}
+            {a.details && (
+              <div className="mt-0.5 pl-3.5 text-xs text-ink-3">{a.details}</div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

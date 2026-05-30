@@ -32,6 +32,11 @@ export function designationInfo(designation) {
   );
 }
 
+// Convenience: just the human title for a designation enum.
+export function designationLabel(designation) {
+  return designationInfo(designation).title;
+}
+
 // `anomalies[].type` is a FREE-FORM snake_case label in the real contract. The
 // spec names these examples; the set is not exhaustive, so we humanize known
 // types and fall back to title-casing anything else.
@@ -81,6 +86,12 @@ export function anomalyDetail(anomaly) {
   return (
     anomaly.details || ANOMALY_FALLBACK_DETAIL[anomaly.type] || "Flagged by the verifier."
   );
+}
+
+// Whether an anomaly is advisory (informational) rather than a hard failure.
+// The real contract may carry an `advisory: true` flag; default is a hard fail.
+export function anomalyAdvisory(anomaly) {
+  return anomaly?.advisory === true;
 }
 
 /**
