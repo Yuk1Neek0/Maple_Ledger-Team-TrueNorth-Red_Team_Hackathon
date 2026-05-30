@@ -1,19 +1,17 @@
 import { useEffect, useRef } from "react";
 import cytoscape from "cytoscape";
+import Panel from "./ui/Panel.jsx";
 
-// Renders the provenance DAG with Cytoscape.js.
-//
-// Node colouring rules (per spec):
-//   - status === "INVALID"  -> red (a failed integrity check)
-//   - otherwise by country  -> CA green-ish, everything else grey
-//
-// Graph shape (supplied separately from /verify until integration):
-//   { nodes: [{ id, label, country, status }],
-//     edges: [{ source, target }] }    // edge = input -> consumer
+// Renders the provenance DAG with Cytoscape.js, styled for the control-room
+// theme. Node colouring:
+//   - status === "INVALID"  -> alarm red (a failed integrity check)
+//   - otherwise by country  -> CA signal-green, everything else dim grey
+// Graph shape: { nodes:[{id,label,country,status}], edges:[{source,target}] }
+// edge = input -> consumer.
 
-const CA_GREEN = "#16a34a"; // emerald-600
-const OTHER_GREY = "#94a3b8"; // slate-400
-const INVALID_RED = "#dc2626"; // red-600
+const CA_GREEN = "#34e8a0";
+const OTHER_GREY = "#7e8e9a";
+const INVALID_RED = "#ff5247";
 
 function nodeColor(node) {
   if (node.status === "INVALID") return INVALID_RED;
@@ -38,11 +36,7 @@ export default function ProvenanceGraph({ graph }) {
         },
       })),
       ...graph.edges.map((e) => ({
-        data: {
-          id: `${e.source}->${e.target}`,
-          source: e.source,
-          target: e.target,
-        },
+        data: { id: `${e.source}->${e.target}`, source: e.source, target: e.target },
       })),
     ];
 
@@ -53,54 +47,48 @@ export default function ProvenanceGraph({ graph }) {
         {
           selector: "node",
           style: {
-            "background-color": "data(color)",
+            "background-color": "#0c1014",
+            "border-color": "data(color)",
+            "border-width": 2,
             label: "data(label)",
-            color: "#0f172a",
-            "font-size": 11,
-            "font-family":
-              "ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif",
+            color: "#d3dde4",
+            "font-size": 10,
+            "font-family": "'JetBrains Mono Variable', ui-monospace, monospace",
             "text-wrap": "wrap",
             "text-valign": "bottom",
-            "text-margin-y": 6,
+            "text-margin-y": 7,
             "text-halign": "center",
-            width: 34,
-            height: 34,
-            "border-width": 2,
-            "border-color": "#ffffff",
+            width: 30,
+            height: 30,
+            shape: "round-rectangle",
           },
         },
         {
+          selector: "node:selected",
+          style: { "border-color": "#46d6f0", "border-width": 3 },
+        },
+        {
           selector: 'node[status = "INVALID"]',
-          style: {
-            "border-color": INVALID_RED,
-            "border-width": 3,
-          },
+          style: { "border-color": INVALID_RED, "border-width": 3 },
         },
         {
           selector: "edge",
           style: {
-            width: 2,
-            "line-color": "#cbd5e1", // slate-300
-            "target-arrow-color": "#cbd5e1",
+            width: 1.5,
+            "line-color": "#2c3a45",
+            "target-arrow-color": "#46d6f0",
             "target-arrow-shape": "triangle",
             "curve-style": "bezier",
-            "arrow-scale": 1.1,
+            "arrow-scale": 1,
           },
         },
       ],
-      layout: {
-        name: "breadthfirst",
-        directed: true,
-        spacingFactor: 1.3,
-        padding: 24,
-      },
-      // Read-only-ish: allow pan/zoom but no accidental node dragging chaos.
+      layout: { name: "breadthfirst", directed: true, spacingFactor: 1.3, padding: 24 },
       autoungrabify: false,
       wheelSensitivity: 0.2,
     });
 
     cyRef.current = cy;
-    // Fit after layout settles.
     cy.ready(() => cy.fit(undefined, 30));
 
     return () => {
@@ -110,35 +98,26 @@ export default function ProvenanceGraph({ graph }) {
   }, [graph]);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="text-lg font-semibold text-slate-800">Provenance graph</h2>
-      <p className="mt-1 text-sm text-slate-500">
-        Each node is a supplier contribution; arrows point from input to
-        consumer.
+    <Panel label="chain of custody" accent="cyan" right={`${graph?.nodes?.length || 0} nodes`}>
+      <p className="prose-sans text-sm text-dim">
+        Each node is a supplier contribution; arrows point from input to consumer.
       </p>
 
-      <div
-        ref={containerRef}
-        className="mt-4 h-80 w-full rounded-xl bg-slate-50"
-      />
+      <div ref={containerRef} className="mt-4 h-80 w-full border border-line bg-base" />
 
-      {/* Legend */}
-      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-slate-600">
-        <LegendDot color={CA_GREEN} label="Canadian (OK)" />
-        <LegendDot color={OTHER_GREY} label="Foreign (OK)" />
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-dim">
+        <LegendDot color={CA_GREEN} label="Canadian · OK" />
+        <LegendDot color={OTHER_GREY} label="Foreign · OK" />
         <LegendDot color={INVALID_RED} label="Integrity failure" />
       </div>
-    </div>
+    </Panel>
   );
 }
 
 function LegendDot({ color, label }) {
   return (
     <span className="flex items-center gap-1.5">
-      <span
-        className="inline-block h-3 w-3 rounded-full"
-        style={{ backgroundColor: color }}
-      />
+      <span className="inline-block h-2.5 w-2.5" style={{ backgroundColor: color }} />
       {label}
     </span>
   );

@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
+import Panel from "./ui/Panel.jsx";
 
-// A self-contained camera QR scanner. Calls onResult(text) with the decoded
-// string, then stops the camera. Camera access requires a secure context
-// (HTTPS or http://localhost) — see the hint shown on permission failure.
-//
-// We also expose a manual text-entry fallback so the UI is fully testable
-// without a working camera (e.g. headless CI, no webcam, or a denied prompt).
+// Camera QR scanner styled as an acquisition viewport. Calls onResult(text)
+// with the decoded string, then stops the camera. Manual hash entry is always
+// available so the terminal is fully testable without a camera.
 
 const SCAN_REGION_ID = "ml-qr-scan-region";
 
@@ -17,8 +15,6 @@ export default function QrScanner({ onResult, disabled }) {
   const [starting, setStarting] = useState(false);
   const [manual, setManual] = useState("");
 
-  // Stop & clean up the camera when unmounting. stopCamera only touches a ref,
-  // so it is safe to call from a mount-only effect.
   useEffect(() => {
     return () => {
       stopCamera();
@@ -30,7 +26,6 @@ export default function QrScanner({ onResult, disabled }) {
     scannerRef.current = null;
     if (inst) {
       try {
-        // isScanning may be true even mid-start; guard with try/catch.
         await inst.stop();
       } catch {
         /* already stopped */
@@ -53,12 +48,9 @@ export default function QrScanner({ onResult, disabled }) {
       await html5Qr.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 240, height: 240 } },
-        (decodedText) => {
-          // Hand off the result, then tear the camera down.
-          handleResult(decodedText);
-        },
+        (decodedText) => handleResult(decodedText),
         () => {
-          /* per-frame decode failure — ignore, this fires constantly */
+          /* per-frame decode failure — ignore */
         }
       );
     } catch (err) {
@@ -66,13 +58,11 @@ export default function QrScanner({ onResult, disabled }) {
       scannerRef.current = null;
       const msg = String(err?.message || err);
       if (/secure context|https/i.test(msg)) {
-        setError(
-          "Camera needs a secure context. Open this page on http://localhost or over HTTPS."
-        );
+        setError("Camera needs a secure context. Open this page on http://localhost or over HTTPS.");
       } else if (/permission|NotAllowed/i.test(msg)) {
-        setError("Camera permission denied. Allow it, or type the code below.");
+        setError("Camera permission denied. Allow it, or enter the code below.");
       } else if (/NotFound|no camera/i.test(msg)) {
-        setError("No camera found. Type the product code below instead.");
+        setError("No camera found. Enter the product code below instead.");
       } else {
         setError(`Could not start the camera: ${msg}`);
       }
@@ -93,57 +83,64 @@ export default function QrScanner({ onResult, disabled }) {
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="text-lg font-semibold text-slate-800">Scan a product</h2>
-      <p className="mt-1 text-sm text-slate-500">
-        Point your camera at the product’s Maple Ledger QR code.
+    <Panel label="acquire" accent="cyan" right={active ? "camera live" : "standby"}>
+      <p className="prose-sans text-sm text-dim">
+        Point the camera at a product&apos;s Maple Ledger code, or key the root hash directly.
       </p>
 
-      {/* Camera viewport — html5-qrcode injects a <video> here. */}
-      <div
-        id={SCAN_REGION_ID}
-        className={`mt-4 overflow-hidden rounded-xl bg-slate-900/5 ${
-          active ? "block" : "hidden"
-        }`}
-      />
+      {/* viewport with framing brackets + sweep line */}
+      <div className="relative mt-4">
+        <div
+          id={SCAN_REGION_ID}
+          className={`relative overflow-hidden border border-line-bright bg-base ${
+            active ? "block" : "hidden"
+          }`}
+        />
+        {active && (
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div className="scan-sweep h-8 w-full bg-gradient-to-b from-transparent via-cyan/30 to-transparent" />
+            <span className="absolute left-0 top-0 h-4 w-4 border-l-2 border-t-2 border-cyan" />
+            <span className="absolute right-0 top-0 h-4 w-4 border-r-2 border-t-2 border-cyan" />
+            <span className="absolute bottom-0 left-0 h-4 w-4 border-b-2 border-l-2 border-cyan" />
+            <span className="absolute bottom-0 right-0 h-4 w-4 border-b-2 border-r-2 border-cyan" />
+          </div>
+        )}
+      </div>
 
-      {!active && (
+      {!active ? (
         <button
           type="button"
           onClick={startCamera}
           disabled={disabled || starting}
-          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-4 inline-flex w-full items-center justify-center gap-2 border border-cyan bg-cyan/10 px-4 py-3 text-sm font-semibold uppercase tracking-[0.16em] text-cyan transition hover:bg-cyan/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {starting ? "Starting camera…" : "Start camera"}
+          {starting ? "starting camera…" : "▸ start camera"}
         </button>
-      )}
-
-      {active && (
+      ) : (
         <button
           type="button"
           onClick={() => {
             stopCamera();
             setActive(false);
           }}
-          className="mt-4 inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 font-medium text-slate-700 transition hover:bg-slate-50"
+          className="mt-4 inline-flex w-full items-center justify-center border border-line px-4 py-2.5 text-sm font-medium uppercase tracking-[0.16em] text-dim transition hover:border-line-bright hover:text-ink"
         >
-          Stop camera
+          ■ stop camera
         </button>
       )}
 
       {error && (
-        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <p className="mt-3 border-l-2 border-amber bg-amber/10 px-3 py-2 text-sm text-amber">
           {error}
         </p>
       )}
 
-      {/* Manual entry fallback — always available. */}
-      <form onSubmit={submitManual} className="mt-4 border-t border-slate-100 pt-4">
+      <form onSubmit={submitManual} className="mt-4 border-t border-line pt-4">
         <label
           htmlFor="ml-manual-hash"
-          className="text-sm font-medium text-slate-600"
+          className="text-[11px] uppercase tracking-[0.16em] text-dim"
         >
-          Or enter a root hash manually
+          Manual entry — root hash
         </label>
         <div className="mt-2 flex gap-2">
           <input
@@ -151,18 +148,18 @@ export default function QrScanner({ onResult, disabled }) {
             type="text"
             value={manual}
             onChange={(e) => setManual(e.target.value)}
-            placeholder="e.g. a3f19c4e7b2d8f01"
-            className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+            placeholder="a3f19c4e7b2d8f01…"
+            className="min-w-0 flex-1 border border-line bg-base px-3 py-2 font-mono text-sm text-ink placeholder:text-faint focus:border-cyan focus:outline-none"
           />
           <button
             type="submit"
             disabled={disabled || !manual.trim()}
-            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+            className="border border-signal/60 bg-signal/10 px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em] text-signal transition hover:bg-signal/20 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Verify
+            verify
           </button>
         </div>
       </form>
-    </div>
+    </Panel>
   );
 }

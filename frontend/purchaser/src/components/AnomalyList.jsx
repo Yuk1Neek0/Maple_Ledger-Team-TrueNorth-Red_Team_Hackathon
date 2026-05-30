@@ -1,15 +1,17 @@
 import { anomalyDetail, anomalyLabel } from "../labels.js";
 
-// Renders the anomaly list. Hard failures (advisory:false) are loud red cards;
-// advisory items (advisory:true) are muted amber/grey and visually secondary.
+// Integrity findings rendered as a verification log. Hard failures (advisory:
+// false) are alarm-red [FAIL] rows; advisory items are amber [ADV] rows.
 export default function AnomalyList({ anomalies }) {
   const list = Array.isArray(anomalies) ? anomalies : [];
 
   if (list.length === 0) {
     return (
-      <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-        <span aria-hidden className="text-base">✓</span>
-        No integrity issues detected. The provenance chain verified cleanly.
+      <div className="flex items-center gap-2 border border-signal/30 bg-signal/5 px-3 py-2.5 text-sm text-signal">
+        <span aria-hidden>✓</span>
+        <span className="uppercase tracking-[0.12em] text-[12px]">
+          no integrity issues · chain verified clean
+        </span>
       </div>
     );
   }
@@ -18,67 +20,40 @@ export default function AnomalyList({ anomalies }) {
   const advisory = list.filter((a) => a.advisory);
 
   return (
-    <div className="space-y-3">
+    <div className="border border-line bg-base">
       {hard.map((a, i) => (
-        <AnomalyCard key={`h-${i}`} anomaly={a} variant="hard" />
+        <LogRow key={`h-${i}`} anomaly={a} variant="hard" />
       ))}
       {advisory.map((a, i) => (
-        <AnomalyCard key={`a-${i}`} anomaly={a} variant="advisory" />
+        <LogRow key={`a-${i}`} anomaly={a} variant="advisory" />
       ))}
     </div>
   );
 }
 
-function AnomalyCard({ anomaly, variant }) {
+function LogRow({ anomaly, variant }) {
   const hard = variant === "hard";
-  const shortHash = (anomaly.attestation_hash || "").slice(0, 12);
-
+  const shortHash = (anomaly.attestation_hash || "").slice(0, 16);
   return (
-    <div
-      className={
-        hard
-          ? "rounded-xl border-l-4 border-red-500 bg-red-50 px-4 py-3"
-          : "rounded-xl border-l-4 border-amber-300 bg-amber-50/60 px-4 py-3"
-      }
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span
-            aria-hidden
-            className={hard ? "text-red-600" : "text-amber-500"}
-          >
-            {hard ? "⚠" : "ⓘ"}
-          </span>
-          <span
-            className={`font-semibold ${
-              hard ? "text-red-800" : "text-amber-800"
-            }`}
-          >
-            {anomalyLabel(anomaly.reason)}
-          </span>
-        </div>
+    <div className={`border-b border-line px-3 py-2.5 last:border-b-0 ${hard ? "bg-alarm/[0.06]" : ""}`}>
+      <div className="flex items-center gap-2 text-sm">
         <span
-          className={`rounded-full px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide ${
-            hard
-              ? "bg-red-100 text-red-700"
-              : "bg-amber-100 text-amber-700"
+          className={`shrink-0 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${
+            hard ? "bg-alarm/15 text-alarm" : "bg-amber/15 text-amber"
           }`}
         >
-          {hard ? "Failure" : "Advisory"}
+          {hard ? "fail" : "adv"}
         </span>
+        <span className={`font-medium ${hard ? "text-alarm" : "text-amber"}`}>
+          {anomalyLabel(anomaly.reason)}
+        </span>
+        {shortHash && (
+          <span className="ml-auto truncate font-mono text-xs text-faint">{shortHash}…</span>
+        )}
       </div>
-      <p
-        className={`mt-1.5 text-sm ${
-          hard ? "text-red-700" : "text-amber-800/80"
-        }`}
-      >
+      <p className="prose-sans mt-1 pl-[2.85rem] text-xs leading-relaxed text-dim">
         {anomalyDetail(anomaly)}
       </p>
-      {shortHash && (
-        <p className="mt-1 font-mono text-xs text-slate-500">
-          {shortHash}…
-        </p>
-      )}
     </div>
   );
 }

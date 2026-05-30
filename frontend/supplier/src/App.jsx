@@ -10,11 +10,23 @@ import {
 import { submitAttestation, BACKEND_URL } from "./lib/api.js";
 import { runCanonicalSelfTest } from "./lib/canonical.test.js";
 import { DEMO_IDENTITIES } from "./devIdentities.js";
+import Panel, { StatusNode } from "./components/ui/Panel.jsx";
 
 // Steps of the supplier flow.
 const STEP_FORM = "form";
 const STEP_CONFIRM = "confirm";
 const STEP_DONE = "done";
+
+// Shared control-surface button styles.
+const BTN_CYAN =
+  "inline-flex items-center justify-center gap-2 border border-cyan bg-cyan/10 px-5 py-2 text-sm font-semibold uppercase tracking-[0.14em] text-cyan transition hover:bg-cyan/20 disabled:cursor-not-allowed disabled:opacity-40";
+const BTN_SIGNAL =
+  "inline-flex items-center justify-center gap-2 border border-signal/60 bg-signal/10 px-6 py-2 text-sm font-semibold uppercase tracking-[0.14em] text-signal transition hover:bg-signal/20 disabled:cursor-not-allowed disabled:opacity-50";
+const BTN_GHOST =
+  "inline-flex items-center justify-center gap-2 border border-line px-5 py-2 text-sm font-medium uppercase tracking-[0.14em] text-dim transition hover:border-line-bright hover:text-ink disabled:opacity-40";
+
+const inputClass =
+  "mt-1 w-full border border-line bg-base px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-cyan focus:outline-none";
 
 function emptyInput() {
   return { attestation_hash: "", quantity_used: "1" };
@@ -67,26 +79,23 @@ function buildPayload(form) {
 function Field({ label, hint, children }) {
   return (
     <label className="block text-left">
-      <span className="block text-sm font-medium text-slate-700">{label}</span>
+      <span className="block text-[11px] font-medium uppercase tracking-[0.12em] text-dim">
+        {label}
+      </span>
       {children}
-      {hint && <span className="mt-1 block text-xs text-slate-400">{hint}</span>}
+      {hint && <span className="mt-1 block text-xs text-faint">{hint}</span>}
     </label>
   );
 }
 
-const inputClass =
-  "mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500";
-
 export default function App() {
   const [step, setStep] = useState(STEP_FORM);
   const [form, setForm] = useState(defaultForm);
-  // Generate a fresh keypair once, lazily, on first render.
   const [keypair, setKeypair] = useState(generateKeypair);
   const [privInput, setPrivInput] = useState("");
   const [keyError, setKeyError] = useState("");
   const [submitState, setSubmitState] = useState({ status: "idle" }); // idle|signing|submitting|done|error
   const [result, setResult] = useState(null); // { hash, signedBody, canonical, verified }
-  // Run the canonicalization self-test once and log the outcome.
   const [selfTest] = useState(() => {
     const r = runCanonicalSelfTest();
     if (r.pass) {
@@ -150,13 +159,8 @@ export default function App() {
     if (!keypair) return;
     setSubmitState({ status: "signing" });
     try {
-      // Sign the canonical bytes; produce base64 signature.
       const { signature, canonical: canonicalStr } = signPayload(payload, keypair.privateKey);
-
-      // Local sanity: the signature we just produced must verify against our pubkey.
       const verified = verifyPayload(signature, payload, keypair.publicKey);
-
-      // Wire body = payload + signature.
       const signedBody = { ...payload, signature };
 
       setSubmitState({ status: "submitting" });
@@ -170,14 +174,7 @@ export default function App() {
         backendError = e.message;
       }
 
-      setResult({
-        hash,
-        signature,
-        signedBody,
-        canonical: canonicalStr,
-        verified,
-        backendError,
-      });
+      setResult({ hash, signature, signedBody, canonical: canonicalStr, verified, backendError });
       setSubmitState({ status: backendError ? "error" : "done" });
       setStep(STEP_DONE);
     } catch (e) {
@@ -232,23 +229,38 @@ export default function App() {
     setStep(STEP_FORM);
   }
 
+  const STEP_LABEL = { form: "1 · author", confirm: "2 · confirm", done: "3 · issued" };
+
   return (
-    <div className="min-h-full bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900">
-              Maple Ledger — Supplier
-            </h1>
-            <p className="text-sm text-slate-500">
-              Author, sign (Ed25519), and submit a provenance attestation.
-            </p>
+    <div className="flex min-h-full flex-col">
+      <div className="h-0.5 w-full bg-gradient-to-r from-maple via-maple/40 to-transparent" />
+
+      <header className="sticky top-0 z-40 border-b border-line bg-panel/85 backdrop-blur">
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-2.5">
+          <div className="flex items-center gap-3">
+            <img src="/favicon.svg" alt="" aria-hidden className="h-6 w-6" />
+            <div className="leading-tight">
+              <div className="text-sm font-semibold tracking-[0.22em] text-ink">MAPLE LEDGER</div>
+              <div className="text-[10px] uppercase tracking-[0.24em] text-dim">
+                issuing console · attestation signer
+              </div>
+            </div>
           </div>
           <SelfTestBadge selfTest={selfTest} />
         </div>
+        <div className="border-t border-line bg-base/60 px-6 py-1.5">
+          <div className="mx-auto flex max-w-3xl items-center gap-4 text-[10px] uppercase tracking-[0.18em] text-faint">
+            {Object.entries(STEP_LABEL).map(([k, v]) => (
+              <span key={k} className={step === k ? "text-cyan" : ""}>
+                {step === k ? "▸ " : ""}
+                {v}
+              </span>
+            ))}
+          </div>
+        </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-6 py-8">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-8">
         {step === STEP_FORM && (
           <div className="space-y-6">
             <AuthoringTools onLoadIdentity={loadDemoIdentity} onApplyDraft={applyDraft} />
@@ -286,8 +298,8 @@ export default function App() {
         {step === STEP_DONE && <DoneStep result={result} onReset={resetAll} />}
       </main>
 
-      <footer className="mx-auto max-w-3xl px-6 pb-10 text-center text-xs text-slate-400">
-        Backend: <code className="text-slate-500">{BACKEND_URL}/attestations</code>
+      <footer className="mx-auto w-full max-w-3xl px-6 pb-10 text-center text-[11px] uppercase tracking-[0.16em] text-faint">
+        backend · <code className="text-dim">{BACKEND_URL}/attestations</code>
       </footer>
     </div>
   );
@@ -299,12 +311,9 @@ function SelfTestBadge({ selfTest }) {
   return (
     <span
       title={ok ? "Canonical bytes match the backend" : "Canonicalization mismatch — see console"}
-      className={
-        "rounded-full px-3 py-1 text-xs font-medium " +
-        (ok ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")
-      }
+      className={"border px-2.5 py-1 " + (ok ? "border-signal/40 bg-signal/10" : "border-alarm/40 bg-alarm/10")}
     >
-      canonical self-test: {ok ? "PASS" : "FAIL"}
+      <StatusNode tone={ok ? "signal" : "alarm"} label={`canonical ${ok ? "pass" : "fail"}`} blink={ok} />
     </span>
   );
 }
@@ -339,16 +348,12 @@ function AuthoringTools({ onLoadIdentity, onApplyDraft }) {
   }
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="mb-3 text-base font-semibold text-slate-800">Demo tools</h2>
-
+    <Panel label="authoring tools" accent="cyan">
       <label className="block text-left">
-        <span className="block text-sm font-medium text-slate-700">Load demo identity</span>
-        <select
-          className={inputClass}
-          defaultValue=""
-          onChange={(e) => e.target.value && onLoadIdentity(e.target.value)}
-        >
+        <span className="block text-[11px] font-medium uppercase tracking-[0.12em] text-dim">
+          Load demo identity
+        </span>
+        <select className={inputClass} defaultValue="" onChange={(e) => e.target.value && onLoadIdentity(e.target.value)}>
           <option value="" disabled>
             choose a registered supplier…
           </option>
@@ -358,33 +363,27 @@ function AuthoringTools({ onLoadIdentity, onApplyDraft }) {
             </option>
           ))}
         </select>
-        <span className="mt-1 block text-xs text-slate-400">
+        <span className="mt-1 block text-xs text-faint">
           Loads a key the registry trusts, so the attestation verifies green.
         </span>
       </label>
 
-      <h3 className="mt-5 mb-2 text-sm font-semibold text-slate-700">
-        Draft with AI{" "}
-        <span className="font-normal text-slate-400">(advisory — you review &amp; sign)</span>
+      <h3 className="mt-5 mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-cyan">
+        Draft with AI <span className="font-normal text-faint">(advisory — you review &amp; sign)</span>
       </h3>
       <textarea
-        className={inputClass + " h-20"}
+        className={inputClass + " prose-sans h-20"}
         placeholder="e.g. We CNC-milled 50 RAVEN airframes in Ontario, 3 machinists × 6 hrs at $42/hr, from Canadian 6061 billet."
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
       <div className="mt-2 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={draft}
-          disabled={busy || !text.trim()}
-          className="rounded-md bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-900 disabled:opacity-50"
-        >
-          {busy ? "Drafting…" : "Draft with AI"}
+        <button type="button" onClick={draft} disabled={busy || !text.trim()} className={BTN_CYAN}>
+          {busy ? "drafting…" : "▸ draft with ai"}
         </button>
-        {msg && <span className="text-xs text-slate-500">{msg}</span>}
+        {msg && <span className="prose-sans text-xs text-dim">{msg}</span>}
       </div>
-    </section>
+    </Panel>
   );
 }
 
@@ -409,158 +408,101 @@ function FormStep(props) {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-base font-semibold text-slate-800">Attestation</h2>
+      <Panel label="attestation" accent="cyan">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Supplier ID">
-            <input
-              className={inputClass}
-              value={form.supplier_id}
-              onChange={(e) => update("supplier_id", e.target.value)}
-              placeholder="SUP-ALU"
-            />
+            <input className={inputClass} value={form.supplier_id} onChange={(e) => update("supplier_id", e.target.value)} placeholder="SUP-ALU" />
           </Field>
           <Field label="Work country" hint="ISO-2 uppercase, e.g. CA">
-            <input
-              className={inputClass}
-              value={form.work_country}
-              onChange={(e) => update("work_country", e.target.value)}
-              placeholder="CA"
-              maxLength={2}
-            />
+            <input className={inputClass} value={form.work_country} onChange={(e) => update("work_country", e.target.value)} placeholder="CA" maxLength={2} />
           </Field>
         </div>
 
-        <h3 className="mt-6 mb-2 text-sm font-semibold text-slate-700">Output</h3>
+        <h3 className="mt-6 mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-dim">Output</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Field label="Product ID">
-            <input
-              className={inputClass}
-              value={form.output_product_id}
-              onChange={(e) => update("output_product_id", e.target.value)}
-              placeholder="raw_aluminum"
-            />
+            <input className={inputClass} value={form.output_product_id} onChange={(e) => update("output_product_id", e.target.value)} placeholder="raw_aluminum" />
           </Field>
           <Field label="Quantity" hint="integer">
-            <input
-              className={inputClass}
-              value={form.output_quantity}
-              onChange={(e) => update("output_quantity", e.target.value)}
-              inputMode="numeric"
-            />
+            <input className={inputClass} value={form.output_quantity} onChange={(e) => update("output_quantity", e.target.value)} inputMode="numeric" />
           </Field>
           <Field label="Unit">
-            <input
-              className={inputClass}
-              value={form.output_unit}
-              onChange={(e) => update("output_unit", e.target.value)}
-              placeholder="kg"
-            />
+            <input className={inputClass} value={form.output_unit} onChange={(e) => update("output_unit", e.target.value)} placeholder="kg" />
           </Field>
         </div>
 
-        <h3 className="mt-6 mb-2 text-sm font-semibold text-slate-700">Cost split</h3>
+        <h3 className="mt-6 mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-dim">Cost split</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Materials (cents)" hint="integer cents, e.g. 500 = $5.00">
-            <input
-              className={inputClass}
-              value={form.materials_cents}
-              onChange={(e) => update("materials_cents", e.target.value)}
-              inputMode="numeric"
-            />
+            <input className={inputClass} value={form.materials_cents} onChange={(e) => update("materials_cents", e.target.value)} inputMode="numeric" />
           </Field>
           <Field label="Labour (cents)" hint="integer cents">
-            <input
-              className={inputClass}
-              value={form.labour_cents}
-              onChange={(e) => update("labour_cents", e.target.value)}
-              inputMode="numeric"
-            />
+            <input className={inputClass} value={form.labour_cents} onChange={(e) => update("labour_cents", e.target.value)} inputMode="numeric" />
           </Field>
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Timestamp" hint="ISO-8601 UTC, ends in Z">
-            <input
-              className={inputClass}
-              value={form.timestamp}
-              onChange={(e) => update("timestamp", e.target.value)}
-              placeholder="2026-05-01T08:00:00Z"
-            />
+            <input className={inputClass} value={form.timestamp} onChange={(e) => update("timestamp", e.target.value)} placeholder="2026-05-01T08:00:00Z" />
           </Field>
-          <label className="mt-6 flex items-center gap-2 text-sm text-slate-700">
+          <label className="mt-6 flex items-center gap-2 text-sm text-ink">
             <input
               type="checkbox"
-              className="h-4 w-4 rounded border-slate-300 text-red-600 focus:ring-red-500"
+              className="h-4 w-4 border-line bg-base text-cyan accent-cyan focus:ring-cyan"
               checked={form.is_substantial_transformation}
               onChange={(e) => update("is_substantial_transformation", e.target.checked)}
             />
             Substantial transformation occurred
           </label>
         </div>
-      </section>
+      </Panel>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-slate-800">Inputs consumed</h2>
-          <button
-            type="button"
-            onClick={addInput}
-            className="rounded-md bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200"
-          >
-            + Add input
+      <Panel
+        label="inputs consumed"
+        accent="cyan"
+        right={
+          <button type="button" onClick={addInput} className="text-cyan transition hover:text-ink">
+            + add input
           </button>
-        </div>
+        }
+      >
         {form.inputs.length === 0 && (
-          <p className="text-sm text-slate-400">
-            No inputs (a raw-material attestation may have none).
-          </p>
+          <p className="prose-sans text-sm text-faint">No inputs (a raw-material attestation may have none).</p>
         )}
         <div className="space-y-3">
           {form.inputs.map((inp, idx) => (
             <div key={idx} className="flex items-end gap-3">
               <div className="flex-1">
                 <Field label={`Input #${idx + 1} — attestation hash`} hint="lowercase hex">
-                  <input
-                    className={inputClass}
-                    value={inp.attestation_hash}
-                    onChange={(e) => updateInput(idx, "attestation_hash", e.target.value)}
-                    placeholder="a1b2c3..."
-                  />
+                  <input className={inputClass + " font-mono"} value={inp.attestation_hash} onChange={(e) => updateInput(idx, "attestation_hash", e.target.value)} placeholder="a1b2c3…" />
                 </Field>
               </div>
               <div className="w-32">
                 <Field label="Qty used" hint="integer">
-                  <input
-                    className={inputClass}
-                    value={inp.quantity_used}
-                    onChange={(e) => updateInput(idx, "quantity_used", e.target.value)}
-                    inputMode="numeric"
-                  />
+                  <input className={inputClass} value={inp.quantity_used} onChange={(e) => updateInput(idx, "quantity_used", e.target.value)} inputMode="numeric" />
                 </Field>
               </div>
               <button
                 type="button"
                 onClick={() => removeInput(idx)}
-                className="mb-1 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-100"
+                className="mb-1 border border-alarm/40 bg-alarm/10 px-3 py-2 text-sm font-medium uppercase tracking-[0.1em] text-alarm transition hover:bg-alarm/20"
               >
-                Remove
+                remove
               </button>
             </div>
           ))}
         </div>
-      </section>
+      </Panel>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="mb-2 text-base font-semibold text-slate-800">Signing key</h2>
-        <p className="text-sm text-slate-500">
-          A fresh Ed25519 keypair is generated in your browser. You may paste a 32-byte
-          (64 hex char) private key instead.
+      <Panel label="signing key" accent="cyan">
+        <p className="prose-sans text-sm text-dim">
+          A fresh Ed25519 keypair is generated in your browser. You may paste a 32-byte (64 hex char)
+          private key instead.
         </p>
         <dl className="mt-3 space-y-1 text-xs">
           <div className="break-all">
-            <span className="font-medium text-slate-600">public key (hex): </span>
-            <code className="text-slate-800">{keypair?.publicHex}</code>
+            <span className="font-medium uppercase tracking-[0.1em] text-faint">public key (hex): </span>
+            <code className="text-signal/90">{keypair?.publicHex}</code>
           </div>
         </dl>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -570,58 +512,42 @@ function FormStep(props) {
             onChange={(e) => setPrivInput(e.target.value)}
             placeholder="paste 64-hex-char private key (optional)"
           />
-          <button
-            type="button"
-            onClick={applyPastedKey}
-            disabled={!privInput.trim()}
-            className="rounded-md bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40"
-          >
-            Use key
+          <button type="button" onClick={applyPastedKey} disabled={!privInput.trim()} className={BTN_CYAN}>
+            use key
           </button>
-          <button
-            type="button"
-            onClick={regenerateKey}
-            className="rounded-md bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
-          >
-            Regenerate
+          <button type="button" onClick={regenerateKey} className={BTN_GHOST}>
+            regenerate
           </button>
         </div>
-        {keyError && <p className="mt-2 text-sm text-red-600">{keyError}</p>}
-      </section>
+        {keyError && <p className="mt-2 text-sm text-alarm">{keyError}</p>}
+      </Panel>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="mb-2 text-base font-semibold text-slate-800">Live preview</h2>
-        <p className="mb-1 text-xs font-medium text-slate-500">Assembled payload</p>
-        <pre className="mb-4 overflow-x-auto rounded-md bg-slate-900 p-3 text-xs text-slate-100">
+      <Panel label="live preview" accent="cyan" right="what gets signed">
+        <p className="mb-1 text-[11px] uppercase tracking-[0.1em] text-faint">Assembled payload</p>
+        <pre className="mb-4 overflow-x-auto border border-line bg-base p-3 text-xs text-ink">
 {JSON.stringify(payload, null, 2)}
         </pre>
-        <p className="mb-1 text-xs font-medium text-slate-500">
-          Canonical bytes (what gets signed)
+        <p className="mb-1 text-[11px] uppercase tracking-[0.1em] text-faint">
+          Canonical bytes — one changed byte breaks the signature
         </p>
-        <pre className="overflow-x-auto rounded-md bg-slate-100 p-3 text-xs text-slate-700">
+        <pre className="overflow-x-auto border border-line bg-base p-3 text-xs text-signal/90">
 {canonical}
         </pre>
-      </section>
+      </Panel>
 
       {!validation.valid && (
-        <section className="rounded-lg border border-red-200 bg-red-50 p-4">
-          <h3 className="text-sm font-semibold text-red-700">Fix before continuing</h3>
-          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-red-600">
+        <Panel label="blocked" accent="alarm" right="fix to continue">
+          <ul className="list-disc space-y-1 pl-5 text-sm text-alarm">
             {validation.errors.map((err, i) => (
               <li key={i}>{err}</li>
             ))}
           </ul>
-        </section>
+        </Panel>
       )}
 
       <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={onContinue}
-          disabled={!validation.valid}
-          className="rounded-md bg-red-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Review &amp; sign
+        <button type="button" onClick={onContinue} disabled={!validation.valid} className={BTN_CYAN}>
+          review &amp; sign ▸
         </button>
       </div>
     </div>
@@ -632,49 +558,37 @@ function ConfirmStep({ payload, canonical, keypair, submitState, onBack, onConfi
   const busy = submitState.status === "signing" || submitState.status === "submitting";
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-        <h2 className="text-base font-semibold text-amber-800">Confirm before signing</h2>
-        <p className="mt-1 text-sm text-amber-700">
-          Review the exact payload below. Once signed, any change to a single byte
-          invalidates the signature. This is what will be signed and submitted.
+      <Panel label="confirm before signing" accent="amber" right="irreversible">
+        <p className="prose-sans text-sm text-amber/90">
+          Review the exact payload below. Once signed, any change to a single byte invalidates the
+          signature. This is what will be signed and submitted.
         </p>
-      </section>
+      </Panel>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="mb-1 text-xs font-medium text-slate-500">Payload</p>
-        <pre className="mb-4 overflow-x-auto rounded-md bg-slate-900 p-3 text-xs text-slate-100">
+      <Panel label="payload" accent="cyan">
+        <p className="mb-1 text-[11px] uppercase tracking-[0.1em] text-faint">Payload</p>
+        <pre className="mb-4 overflow-x-auto border border-line bg-base p-3 text-xs text-ink">
 {JSON.stringify(payload, null, 2)}
         </pre>
-        <p className="mb-1 text-xs font-medium text-slate-500">Canonical bytes</p>
-        <pre className="mb-4 overflow-x-auto rounded-md bg-slate-100 p-3 text-xs text-slate-700">
+        <p className="mb-1 text-[11px] uppercase tracking-[0.1em] text-faint">Canonical bytes</p>
+        <pre className="mb-4 overflow-x-auto border border-line bg-base p-3 text-xs text-signal/90">
 {canonical}
         </pre>
-        <p className="text-xs text-slate-500">
-          Signing with public key{" "}
-          <code className="break-all text-slate-700">{keypair?.publicHex}</code>
+        <p className="text-xs text-dim">
+          Signing with public key <code className="break-all text-signal/90">{keypair?.publicHex}</code>
         </p>
-      </section>
+      </Panel>
 
       <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={busy}
-          className="rounded-md bg-slate-100 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-200 disabled:opacity-40"
-        >
-          Back to edit
+        <button type="button" onClick={onBack} disabled={busy} className={BTN_GHOST}>
+          ◂ back to edit
         </button>
-        <button
-          type="button"
-          onClick={onConfirm}
-          disabled={busy}
-          className="rounded-md bg-red-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:opacity-60"
-        >
+        <button type="button" onClick={onConfirm} disabled={busy} className={BTN_SIGNAL}>
           {submitState.status === "signing"
-            ? "Signing…"
+            ? "signing…"
             : submitState.status === "submitting"
-            ? "Submitting…"
-            : "Sign & submit"}
+            ? "submitting…"
+            : "⬢ sign & submit"}
         </button>
       </div>
     </div>
@@ -686,16 +600,11 @@ function DoneStep({ result, onReset }) {
   if (result.fatal) {
     return (
       <div className="space-y-4">
-        <section className="rounded-lg border border-red-200 bg-red-50 p-6">
-          <h2 className="text-base font-semibold text-red-700">Signing failed</h2>
-          <p className="mt-1 text-sm text-red-600">{result.fatal}</p>
-        </section>
-        <button
-          type="button"
-          onClick={onReset}
-          className="rounded-md bg-slate-800 px-5 py-2.5 text-sm font-medium text-white hover:bg-slate-700"
-        >
-          Start over
+        <Panel label="signing failed" accent="alarm" right="halted">
+          <p className="prose-sans text-sm text-alarm">{result.fatal}</p>
+        </Panel>
+        <button type="button" onClick={onReset} className={BTN_GHOST}>
+          ↻ start over
         </button>
       </div>
     );
@@ -704,61 +613,44 @@ function DoneStep({ result, onReset }) {
   const submitted = !result.backendError;
   return (
     <div className="space-y-6">
-      <section
-        className={
-          "rounded-lg border p-6 " +
-          (submitted ? "border-green-200 bg-green-50" : "border-amber-200 bg-amber-50")
-        }
+      <Panel
+        label={submitted ? "attestation issued" : "signed locally"}
+        accent={submitted ? "signal" : "amber"}
+        right={submitted ? "accepted" : "backend unreachable"}
       >
-        <h2
-          className={
-            "text-base font-semibold " + (submitted ? "text-green-800" : "text-amber-800")
-          }
-        >
-          {submitted ? "Attestation accepted" : "Signed locally — backend unreachable"}
-        </h2>
         {submitted ? (
-          <p className="mt-2 text-sm text-green-700">
-            Backend returned hash:
-            <br />
-            <code className="mt-1 inline-block break-all rounded bg-white px-2 py-1 text-green-900">
+          <div className="seal-in">
+            <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-signal">
+              <span className="blink">●</span> accepted by verifier
+            </div>
+            <p className="mt-3 text-[11px] uppercase tracking-[0.12em] text-faint">content hash</p>
+            <code className="mt-1 block break-all border border-signal/30 bg-base px-3 py-2 text-sm text-signal/90 glow-signal">
               {result.hash}
             </code>
-          </p>
+          </div>
         ) : (
-          <p className="mt-2 text-sm text-amber-700">
-            The payload was signed and verified locally, but the POST to the backend
-            failed: <span className="font-mono">{result.backendError}</span>. The signed
-            body below is valid and ready to submit once the backend is reachable.
+          <p className="prose-sans text-sm text-amber/90">
+            The payload was signed and verified locally, but the POST to the backend failed:{" "}
+            <span className="font-mono text-amber">{result.backendError}</span>. The signed body
+            below is valid and ready to submit once the backend is reachable.
           </p>
         )}
-      </section>
+      </Panel>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-sm text-slate-600">
+      <Panel label="signed body" accent="cyan" right="posted to /attestations">
+        <p className="text-sm text-dim">
           Local signature verification:{" "}
-          <span
-            className={
-              result.verified ? "font-semibold text-green-700" : "font-semibold text-red-700"
-            }
-          >
+          <span className={result.verified ? "font-semibold text-signal" : "font-semibold text-alarm"}>
             {result.verified ? "valid" : "INVALID"}
           </span>
         </p>
-        <p className="mt-3 mb-1 text-xs font-medium text-slate-500">
-          Signed body (payload + signature) — sent to POST /attestations
-        </p>
-        <pre className="overflow-x-auto rounded-md bg-slate-900 p-3 text-xs text-slate-100">
+        <pre className="mt-3 overflow-x-auto border border-line bg-base p-3 text-xs text-ink">
 {JSON.stringify(result.signedBody, null, 2)}
         </pre>
-      </section>
+      </Panel>
 
-      <button
-        type="button"
-        onClick={onReset}
-        className="rounded-md bg-slate-800 px-5 py-2.5 text-sm font-medium text-white hover:bg-slate-700"
-      >
-        Author another
+      <button type="button" onClick={onReset} className={BTN_GHOST}>
+        ↻ author another
       </button>
     </div>
   );

@@ -10,9 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource-variable/hanken-grotesk": "^5.1.0",
+    "@fontsource-variable/jetbrains-mono": "^5.1.0",
     "@tailwindcss/vite": "^4.3.0",
     "cytoscape": "^3.33.4",
     "html5-qrcode": "^2.3.8",
+    "motion": "^11.18.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "tailwindcss": "^4.3.0"

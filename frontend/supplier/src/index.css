@@ -1,5 +1,39 @@
 @import "tailwindcss";
 
+/* ──────────────────────────────────────────────────────────────────────────
+   Maple Ledger — "Control Room" telemetry design system (supplier)
+   Shared verbatim with the purchaser app: same tokens, same instrument feel.
+   This surface is the issuing console — denser and more utilitarian.
+   ────────────────────────────────────────────────────────────────────────── */
+@theme {
+  --color-base: #07090c;
+  --color-panel: #0c1014;
+  --color-elevated: #11171d;
+  --color-line: #1b242c;
+  --color-line-bright: #2c3a45;
+
+  --color-ink: #d3dde4;
+  --color-dim: #7e8e9a;
+  --color-faint: #4d5a66;
+
+  --color-signal: #34e8a0;
+  --color-signal-deep: #0f6b48;
+  --color-amber: #f5b13d;
+  --color-alarm: #ff5247;
+  --color-cyan: #46d6f0;
+  --color-maple: #f0414f;
+
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular",
+    Menlo, Consolas, monospace;
+  --font-sans: "Hanken Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+
+  --radius: 2px;
+}
+
+:root {
+  color-scheme: dark;
+}
+
 html,
 body,
 #root {
@@ -8,5 +42,102 @@ body,
 }
 
 body {
-  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-mono);
+  background-color: var(--color-base);
+  color: var(--color-ink);
+  background-image:
+    radial-gradient(circle at center, rgba(70, 214, 240, 0.045) 0, transparent 60%),
+    radial-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  background-size: 100% 100%, 22px 22px;
+  background-position: center, center;
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0) 0px,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, 0.13) 3px,
+    rgba(0, 0, 0, 0) 4px
+  );
+  opacity: 0.4;
+  mix-blend-mode: multiply;
+}
+
+::selection {
+  background: var(--color-signal);
+  color: #04110b;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-bright) transparent;
+}
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-line-bright);
+  border-radius: 0;
+}
+
+.leader {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.leader > .leader-fill {
+  flex: 1 1 auto;
+  border-bottom: 1px dotted var(--color-faint);
+  transform: translateY(-0.18em);
+  min-width: 1ch;
+  opacity: 0.7;
+}
+
+.glow-signal {
+  text-shadow: 0 0 10px color-mix(in srgb, var(--color-signal) 55%, transparent);
+}
+.glow-alarm {
+  text-shadow: 0 0 10px color-mix(in srgb, var(--color-alarm) 55%, transparent);
+}
+.glow-amber {
+  text-shadow: 0 0 9px color-mix(in srgb, var(--color-amber) 45%, transparent);
+}
+
+@keyframes ml-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.15; }
+}
+.blink {
+  animation: ml-blink 1.1s steps(1) infinite;
+}
+
+@keyframes ml-seal {
+  0% { opacity: 0; transform: scale(1.6) rotate(-8deg); filter: brightness(2.2); }
+  60% { opacity: 1; transform: scale(0.94) rotate(1deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); filter: brightness(1); }
+}
+.seal-in {
+  animation: ml-seal 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.prose-sans {
+  font-family: var(--font-sans);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::after { display: none; }
+  .blink,
+  .seal-in {
+    animation: none !important;
+  }
 }
