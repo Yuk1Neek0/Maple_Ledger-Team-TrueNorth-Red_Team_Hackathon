@@ -1,7 +1,9 @@
 import { anomalyDetail, anomalyLabel } from "../labels.js";
 
-// Integrity findings rendered as a verification log. Hard failures (advisory:
-// false) are alarm-red [FAIL] rows; advisory items are amber [ADV] rows.
+// Integrity findings rendered as a verification log. Each entry is a real
+// anomaly: { type, attestation_id, details }. The real contract treats every
+// listed anomaly as an integrity violation (chain_valid === false), so all rows
+// render as alarm-red [FAIL].
 export default function AnomalyList({ anomalies }) {
   const list = Array.isArray(anomalies) ? anomalies : [];
 
@@ -16,39 +18,28 @@ export default function AnomalyList({ anomalies }) {
     );
   }
 
-  const hard = list.filter((a) => !a.advisory);
-  const advisory = list.filter((a) => a.advisory);
-
   return (
     <div className="border border-line bg-base">
-      {hard.map((a, i) => (
-        <LogRow key={`h-${i}`} anomaly={a} variant="hard" />
-      ))}
-      {advisory.map((a, i) => (
-        <LogRow key={`a-${i}`} anomaly={a} variant="advisory" />
+      {list.map((a, i) => (
+        <LogRow key={`${a.attestation_id || "?"}-${i}`} anomaly={a} />
       ))}
     </div>
   );
 }
 
-function LogRow({ anomaly, variant }) {
-  const hard = variant === "hard";
-  const shortHash = (anomaly.attestation_hash || "").slice(0, 16);
+function LogRow({ anomaly }) {
+  const id = anomaly.attestation_id || "";
   return (
-    <div className={`border-b border-line px-3 py-2.5 last:border-b-0 ${hard ? "bg-alarm/[0.06]" : ""}`}>
+    <div className="border-b border-line bg-alarm/[0.06] px-3 py-2.5 last:border-b-0">
       <div className="flex items-center gap-2 text-sm">
-        <span
-          className={`shrink-0 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${
-            hard ? "bg-alarm/15 text-alarm" : "bg-amber/15 text-amber"
-          }`}
-        >
-          {hard ? "fail" : "adv"}
+        <span className="shrink-0 bg-alarm/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-alarm">
+          fail
         </span>
-        <span className={`font-medium ${hard ? "text-alarm" : "text-amber"}`}>
-          {anomalyLabel(anomaly.reason)}
-        </span>
-        {shortHash && (
-          <span className="ml-auto truncate font-mono text-xs text-faint">{shortHash}…</span>
+        <span className="font-medium text-alarm">{anomalyLabel(anomaly.type)}</span>
+        {id && (
+          <span className="ml-auto truncate font-mono text-xs text-faint" title={id}>
+            {id}
+          </span>
         )}
       </div>
       <p className="prose-sans mt-1 pl-[2.85rem] text-xs leading-relaxed text-dim">

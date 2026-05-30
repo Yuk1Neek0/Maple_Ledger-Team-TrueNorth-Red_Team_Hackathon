@@ -1,36 +1,45 @@
-// Client-side schema validation mirroring src/schema/attestation.schema.json.
+// Client-side validation for a REAL attestation payload (without the signature
+// field). Mirrors provenance-kit/spec/attestation-schema.md so error messages
+// map directly onto form fields and the bundle stays small.
 //
-// We validate by hand (rather than pulling in a full JSON-Schema engine) so the
-// error messages map directly onto form fields and the bundle stays small. The
-// rules below MUST stay in sync with attestation.schema.json:
-//   - all required fields present
-//   - money fields are integers >= 0 (cents)
-//   - quantity / quantity_used are integers >= 0
-//   - work_country matches ^[A-Z]{2}$
-//   - attestation_hash is lowercase hex
-//   - timestamp is an ISO-8601 UTC instant
-//   - no unknown ("additional") properties
+// Validated payload shape (signature is added AFTER signing):
+//   {
+//     attestation_id, version, supplier_id, timestamp, action_type,
+//     performed_in_country,
+//     parents: [{ attestation_id, content_hash, quantity_consumed, unit }],
+//     output: { name, quantity_produced, unit },
+//     costs: { material_cad, labour_hours, labour_cost_cad }
+//   }
 
-const WORK_COUNTRY_RE = /^[A-Z]{2}$/;
-const HEX_RE = /^[0-9a-f]+$/;
-// RFC 3339 / ISO-8601 UTC instant, e.g. 2026-05-01T08:00:00Z (optional fractional seconds).
+const COUNTRY_RE = /^[A-Z]{2}$/;
+const HEX64_RE = /^[0-9a-f]{64}$/;
+// ISO-8601 UTC instant, e.g. 2026-04-15T14:30:00Z (optional fractional seconds).
 const TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
 
-function isInt(n) {
-  return typeof n === "number" && Number.isInteger(n);
+const ACTION_TYPES = [
+  "raw_material_supply",
+  "component_manufacture",
+  "subassembly",
+  "final_integration",
+];
+
+function isNum(n) {
+  return typeof n === "number" && Number.isFinite(n);
 }
 
-const OUTPUT_KEYS = ["product_id", "quantity", "unit"];
-const INPUT_KEYS = ["attestation_hash", "quantity_used"];
+const PARENT_KEYS = ["attestation_id", "content_hash", "quantity_consumed", "unit"];
+const OUTPUT_KEYS = ["name", "quantity_produced", "unit"];
+const COSTS_KEYS = ["material_cad", "labour_hours", "labour_cost_cad"];
 const PAYLOAD_KEYS = [
+  "attestation_id",
+  "version",
   "supplier_id",
-  "output",
-  "inputs",
-  "materials_cents",
-  "labour_cents",
-  "work_country",
-  "is_substantial_transformation",
   "timestamp",
+  "action_type",
+  "performed_in_country",
+  "parents",
+  "output",
+  "costs",
 ];
 
 /**
@@ -45,9 +54,62 @@ export function validatePayload(p) {
     return { valid: false, errors: ["payload must be an object"] };
   }
 
-  // supplier_id
+  if (typeof p.attestation_id !== "string" || p.attestation_id.length === 0) {
+    errors.push("attestation_id is required and must be a non-empty string");
+  }
+  if (typeof p.version !== "string" || p.version.length === 0) {
+    errors.push('version is required (e.g. "1.0")');
+  }
   if (typeof p.supplier_id !== "string" || p.supplier_id.length === 0) {
     errors.push("supplier_id is required and must be a non-empty string");
+  }
+  if (typeof p.timestamp !== "string" || !TIMESTAMP_RE.test(p.timestamp)) {
+    errors.push("timestamp must be an ISO-8601 UTC instant ending in Z (e.g. 2026-04-15T14:30:00Z)");
+  }
+  if (!ACTION_TYPES.includes(p.action_type)) {
+    errors.push(`action_type must be one of: ${ACTION_TYPES.join(", ")}`);
+  }
+  if (typeof p.performed_in_country !== "string" || !COUNTRY_RE.test(p.performed_in_country)) {
+    errors.push("performed_in_country must be an ISO-2 uppercase code matching ^[A-Z]{2}$");
+  }
+
+  // parents
+  if (!Array.isArray(p.parents)) {
+    errors.push("parents is required and must be an array (empty for raw_material_supply)");
+  } else {
+    if (p.action_type === "raw_material_supply" && p.parents.length !== 0) {
+      errors.push("raw_material_supply must have an empty parents array");
+    }
+    if (
+      (p.action_type === "subassembly" || p.action_type === "final_integration") &&
+      p.parents.length < 2
+    ) {
+      errors.push(`${p.action_type} typically consumes 2+ parents`);
+    }
+    if (p.action_type === "component_manufacture" && p.parents.length < 1) {
+      errors.push("component_manufacture must consume at least one parent");
+    }
+    p.parents.forEach((it, i) => {
+      if (it === null || typeof it !== "object" || Array.isArray(it)) {
+        errors.push(`parents[${i}] must be an object`);
+        return;
+      }
+      if (typeof it.attestation_id !== "string" || it.attestation_id.length === 0) {
+        errors.push(`parents[${i}].attestation_id is required`);
+      }
+      if (typeof it.content_hash !== "string" || !HEX64_RE.test(it.content_hash)) {
+        errors.push(`parents[${i}].content_hash must be a 64-char lowercase hex SHA-256`);
+      }
+      if (!isNum(it.quantity_consumed) || it.quantity_consumed < 0) {
+        errors.push(`parents[${i}].quantity_consumed must be a number >= 0`);
+      }
+      if (typeof it.unit !== "string" || it.unit.length === 0) {
+        errors.push(`parents[${i}].unit is required`);
+      }
+      for (const k of Object.keys(it)) {
+        if (!PARENT_KEYS.includes(k)) errors.push(`parents[${i}] has unknown field "${k}"`);
+      }
+    });
   }
 
   // output
@@ -55,11 +117,11 @@ export function validatePayload(p) {
     errors.push("output is required and must be an object");
   } else {
     const o = p.output;
-    if (typeof o.product_id !== "string" || o.product_id.length === 0) {
-      errors.push("output.product_id is required and must be a non-empty string");
+    if (typeof o.name !== "string" || o.name.length === 0) {
+      errors.push("output.name is required and must be a non-empty string");
     }
-    if (!isInt(o.quantity) || o.quantity < 0) {
-      errors.push("output.quantity must be an integer >= 0");
+    if (!isNum(o.quantity_produced) || o.quantity_produced < 0) {
+      errors.push("output.quantity_produced must be a number >= 0");
     }
     if (typeof o.unit !== "string" || o.unit.length === 0) {
       errors.push("output.unit is required and must be a non-empty string");
@@ -69,48 +131,23 @@ export function validatePayload(p) {
     }
   }
 
-  // inputs
-  if (!Array.isArray(p.inputs)) {
-    errors.push("inputs is required and must be an array (may be empty)");
+  // costs
+  if (p.costs === null || typeof p.costs !== "object" || Array.isArray(p.costs)) {
+    errors.push("costs is required and must be an object");
   } else {
-    p.inputs.forEach((it, i) => {
-      if (it === null || typeof it !== "object" || Array.isArray(it)) {
-        errors.push(`inputs[${i}] must be an object`);
-        return;
-      }
-      if (typeof it.attestation_hash !== "string" || !HEX_RE.test(it.attestation_hash)) {
-        errors.push(`inputs[${i}].attestation_hash must be a lowercase hex string`);
-      }
-      if (!isInt(it.quantity_used) || it.quantity_used < 0) {
-        errors.push(`inputs[${i}].quantity_used must be an integer >= 0`);
-      }
-      for (const k of Object.keys(it)) {
-        if (!INPUT_KEYS.includes(k)) errors.push(`inputs[${i}] has unknown field "${k}"`);
-      }
-    });
-  }
-
-  // money
-  if (!isInt(p.materials_cents) || p.materials_cents < 0) {
-    errors.push("materials_cents must be an integer >= 0 (cents)");
-  }
-  if (!isInt(p.labour_cents) || p.labour_cents < 0) {
-    errors.push("labour_cents must be an integer >= 0 (cents)");
-  }
-
-  // work_country
-  if (typeof p.work_country !== "string" || !WORK_COUNTRY_RE.test(p.work_country)) {
-    errors.push("work_country must be an ISO-2 uppercase code matching ^[A-Z]{2}$");
-  }
-
-  // is_substantial_transformation
-  if (typeof p.is_substantial_transformation !== "boolean") {
-    errors.push("is_substantial_transformation must be a boolean");
-  }
-
-  // timestamp
-  if (typeof p.timestamp !== "string" || !TIMESTAMP_RE.test(p.timestamp)) {
-    errors.push("timestamp must be an ISO-8601 UTC instant ending in Z (e.g. 2026-05-01T08:00:00Z)");
+    const c = p.costs;
+    if (!isNum(c.material_cad) || c.material_cad < 0) {
+      errors.push("costs.material_cad must be a number >= 0 (CAD)");
+    }
+    if (!isNum(c.labour_hours) || c.labour_hours < 0) {
+      errors.push("costs.labour_hours must be a number >= 0");
+    }
+    if (!isNum(c.labour_cost_cad) || c.labour_cost_cad < 0) {
+      errors.push("costs.labour_cost_cad must be a number >= 0 (CAD)");
+    }
+    for (const k of Object.keys(c)) {
+      if (!COSTS_KEYS.includes(k)) errors.push(`costs has unknown field "${k}"`);
+    }
   }
 
   // no unknown top-level fields

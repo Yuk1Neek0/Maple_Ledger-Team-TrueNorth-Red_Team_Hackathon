@@ -1,13 +1,19 @@
-import { useCallback, useEffect, useState } from "react";
-import { fetchVerification } from "./api.js";
-import { USE_MOCK, BACKEND_URL } from "./config.js";
-import { mockGraph, DEMO_HASHES } from "./mockData.js";
-import QrScanner from "./components/QrScanner.jsx";
+import { useCallback, useMemo, useState } from "react";
+import { verifyChain } from "./api.js";
+import { BACKEND_URL } from "./config.js";
+import {
+  buildGraph,
+  costAttribution,
+  criticality,
+  parseChainInput,
+  workedExampleChain,
+} from "./chain.js";
 import VerdictCard from "./components/VerdictCard.jsx";
 import ProvenanceGraph from "./components/ProvenanceGraph.jsx";
 import Panel from "./components/ui/Panel.jsx";
-import Readout, { StatusNode } from "./components/ui/Readout.jsx";
+import { StatusNode } from "./components/ui/Readout.jsx";
 import BootSequence from "./components/ui/BootSequence.jsx";
+import { countryName, formatCad, formatPct } from "./labels.js";
 
 // Shared control surface button styles.
 const BTN_PRIMARY =
@@ -16,29 +22,42 @@ const BTN_GHOST =
   "inline-flex items-center justify-center gap-2 border border-line px-4 py-2 text-sm font-medium uppercase tracking-[0.14em] text-dim transition hover:border-line-bright hover:text-ink";
 
 // Top-level flow:
-//   scan / type a root hash -> fetch /verify (or mock) -> render verdict + graph.
+//   load a CHAIN (worked example or pasted JSON) -> POST /verify ->
+//   render the real verdict + the provenance graph built from the chain.
 //
-// Live mode: /verify returns the real chain topology. Mock mode falls back to a
-// canned graph object alongside the canned verification result.
+// The real /verify response carries only designation / percentage / chain_valid
+// / anomalies. Topology and cost-by-country are derived locally from the chain
+// we submitted (the request); the legal verdict comes from the backend.
 export default function App() {
-  const [rootHash, setRootHash] = useState(null);
-  const [result, setResult] = useState(null);
-  const [graph, setGraph] = useState(null);
+  const [chain, setChain] = useState(null); // the submitted { product_attestation_id, attestations }
+  const [result, setResult] = useState(null); // the real /verify response
   const [status, setStatus] = useState("idle"); // idle | loading | done | error
   const [error, setError] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
   const [showManual, setShowManual] = useState(false);
 
-  const onScan = useCallback(async (hash) => {
-    setRootHash(hash);
-    setStatus("loading");
-    setError(null);
+  // Derived view models — recomputed only when the verified chain/result change.
+  const graph = useMemo(
+    () =>
+      chain && result
+        ? buildGraph(chain.attestations, result.anomalies, chain.product_attestation_id)
+        : null,
+    [chain, result]
+  );
+  const cost = useMemo(
+    () => (chain ? costAttribution(chain.attestations) : null),
+    [chain]
+  );
+  const crit = useMemo(() => (chain ? criticality(chain.attestations) : null), [chain]);
+
+  const runVerify = useCallback(async (loaded) => {
+    setChain(loaded);
     setResult(null);
-    setGraph(null);
+    setError(null);
+    setStatus("loading");
     try {
-      const res = await fetchVerification(hash);
+      const res = await verifyChain(loaded);
       setResult(res);
-      setGraph(res?.graph?.nodes?.length ? res.graph : mockGraph);
       setStatus("done");
     } catch (err) {
       setError(err.message || String(err));
@@ -47,9 +66,8 @@ export default function App() {
   }, []);
 
   const reset = useCallback(() => {
-    setRootHash(null);
+    setChain(null);
     setResult(null);
-    setGraph(null);
     setStatus("idle");
     setError(null);
     setShowDetail(false);
@@ -77,26 +95,30 @@ export default function App() {
             <button type="button" onClick={() => setShowManual(true)} className={BTN_GHOST}>
               manual
             </button>
-            <ModeBadge />
+            <span
+              title={`Verifying against ${BACKEND_URL}/verify`}
+              className="border border-signal/40 bg-signal/10 px-2.5 py-1"
+            >
+              <StatusNode tone="signal" label={`live · ${BACKEND_URL.replace(/^https?:\/\//, "")}`} blink />
+            </span>
           </div>
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
         {status === "idle" && (
-          <div className="mx-auto max-w-md space-y-4">
+          <div className="mx-auto max-w-xl space-y-4">
             <div className="flex items-center justify-between border border-line bg-panel px-3 py-2 text-[11px] uppercase tracking-[0.16em] text-dim">
               <StatusNode tone="signal" label="system ready" blink />
-              <span className="text-faint">awaiting scan</span>
+              <span className="text-faint">awaiting chain</span>
             </div>
-            <DemoHashChips onPick={onScan} />
-            <QrScanner onResult={onScan} />
+            <ChainLoader onVerify={runVerify} />
           </div>
         )}
 
         {status === "loading" && (
           <div className="mx-auto max-w-xl">
-            <BootSequence rootHash={rootHash} />
+            <BootSequence rootHash={chain?.product_attestation_id} />
           </div>
         )}
 
@@ -109,7 +131,7 @@ export default function App() {
               <p className="prose-sans mt-2 text-sm text-dim">{error}</p>
             </Panel>
             <button type="button" onClick={reset} className={`${BTN_PRIMARY} w-full`}>
-              ▸ scan another product
+              ▸ load another chain
             </button>
           </div>
         )}
@@ -117,7 +139,11 @@ export default function App() {
         {status === "done" && result && (
           <div className="space-y-6">
             <div className="grid gap-6 lg:grid-cols-2">
-              <VerdictCard result={result} rootHash={rootHash} />
+              <VerdictCard
+                result={result}
+                cost={cost}
+                productId={chain?.product_attestation_id}
+              />
               {graph && <ProvenanceGraph graph={graph} />}
             </div>
 
@@ -126,15 +152,18 @@ export default function App() {
                 ▸ calculation detail
               </button>
               <button type="button" onClick={reset} className={BTN_GHOST}>
-                ↻ scan another
+                ↻ load another chain
               </button>
             </div>
 
-            {graph && <CriticalityPanel graph={graph} />}
-            {!USE_MOCK && <AskPanel rootHash={rootHash} />}
+            {crit && <CriticalityPanel nodes={crit} />}
 
             {showDetail && (
-              <CostDetailModal result={result} graph={graph} onClose={() => setShowDetail(false)} />
+              <CostDetailModal
+                result={result}
+                cost={cost}
+                onClose={() => setShowDetail(false)}
+              />
             )}
           </div>
         )}
@@ -149,106 +178,86 @@ export default function App() {
   );
 }
 
-// DemoHashChips (P3.4): one-click buttons that fire onScan(hash) with a curated
-// fixture root. Seeded by `python scripts/seed.py` against a live backend. The
-// labels also tell the audience what each demo proves before they click.
-function DemoHashChips({ onPick }) {
-  if (USE_MOCK) return null;  // chips only make sense against the live backend
-  const toneClass = {
-    ok: "border-signal/50 text-signal hover:bg-signal/10",
-    fail: "border-alarm/50 text-alarm hover:bg-alarm/10",
-    advisory: "border-amber/50 text-amber hover:bg-amber/10",
-  };
+// ChainLoader: load the worked example with one click, or paste a chain JSON.
+// Replaces the old QR/root-hash entry — the real backend verifies a whole chain
+// in one POST, not a hash lookup.
+function ChainLoader({ onVerify }) {
+  const [text, setText] = useState("");
+  const [err, setErr] = useState("");
+
+  function loadWorkedExample() {
+    setErr("");
+    onVerify(workedExampleChain);
+  }
+
+  function verifyPasted() {
+    setErr("");
+    try {
+      const parsed = parseChainInput(text);
+      onVerify(parsed);
+    } catch (e) {
+      setErr(e.message);
+    }
+  }
+
   return (
-    <div className="border border-line bg-panel px-3 py-2.5">
-      <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.14em] text-dim">
-        <span>demo presets</span>
-        <span className="text-faint">click to verify · seeded fixtures only</span>
-      </div>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {DEMO_HASHES.map((d) => (
+    <Panel label="acquire" accent="cyan" right="load a chain">
+      <p className="prose-sans text-sm text-dim">
+        Load a provenance chain and verify it against the live backend. The chain — the finished
+        product&apos;s attestation plus every ancestor — is submitted in one request; the verdict,
+        Canadian content, and any integrity anomalies come back from the verifier.
+      </p>
+
+      <button
+        type="button"
+        onClick={loadWorkedExample}
+        className={`${BTN_PRIMARY} mt-4 w-full`}
+      >
+        ▸ load worked example (recovery drone)
+      </button>
+      <p className="mt-1.5 text-xs text-faint">
+        12 attestations · expected: <span className="text-signal">made_in_canada</span> · 58.4% · valid
+      </p>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (text.trim()) verifyPasted();
+        }}
+        className="mt-5 border-t border-line pt-4"
+      >
+        <label htmlFor="ml-chain-json" className="text-[11px] uppercase tracking-[0.16em] text-dim">
+          Or paste a chain JSON
+        </label>
+        <textarea
+          id="ml-chain-json"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={`{ "product_attestation_id": "att-…", "attestations": [ … ] }`}
+          className="mt-2 h-40 w-full resize-y border border-line bg-base px-3 py-2 font-mono text-xs text-ink placeholder:text-faint focus:border-cyan focus:outline-none"
+        />
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <span className="text-xs text-faint">
+            Accepts the full request envelope, a bare attestations array, or one attestation.
+          </span>
           <button
-            key={d.hash}
-            type="button"
-            onClick={() => onPick(d.hash)}
-            title={d.hash}
-            className={`border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] transition ${toneClass[d.tone] || toneClass.ok}`}
+            type="submit"
+            disabled={!text.trim()}
+            className="border border-signal/60 bg-signal/10 px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em] text-signal transition hover:bg-signal/20 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {d.label}
+            verify
           </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ModeBadge() {
-  // Four states (P3.3):
-  //   MOCK              → ?mock=1 or VITE_USE_MOCK=true
-  //   LIVE — DOWN       → live mode but backend /health/details unreachable
-  //   LIVE — NO DATA    → live, reachable, but store is empty (run scripts/seed.py)
-  //   LIVE              → green, reachable, store has data
-  // Renamed without breaking the existing styling — keeps the StatusNode look.
-  const [health, setHealth] = useState({ state: USE_MOCK ? "mock" : "probing" });
-
-  useEffect(() => {
-    if (USE_MOCK) return;
-    let alive = true;
-    fetch(`${BACKEND_URL}/health/details`, { headers: { Accept: "application/json" } })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((d) => {
-        if (!alive) return;
-        if (!d.store_count) setHealth({ state: "empty", detail: d });
-        else setHealth({ state: "live", detail: d });
-      })
-      .catch(() => alive && setHealth({ state: "down" }));
-    return () => { alive = false; };
-  }, []);
-
-  if (health.state === "mock") {
-    return (
-      <span
-        title="Showing hardcoded mock data. Append ?mock=0 to use the live backend."
-        className="border border-amber/40 bg-amber/10 px-2.5 py-1"
-      >
-        <StatusNode tone="amber" label="mock feed" blink />
-      </span>
-    );
-  }
-  if (health.state === "down") {
-    return (
-      <span
-        title={`Live mode, but ${BACKEND_URL}/health/details did not respond. Is verifier-backend running?`}
-        className="border border-red-500/60 bg-red-500/10 px-2.5 py-1"
-      >
-        <StatusNode tone="amber" label="LIVE — BACKEND DOWN" blink />
-      </span>
-    );
-  }
-  if (health.state === "empty") {
-    return (
-      <span
-        title="Live backend reachable but no attestations are seeded. Run: python scripts/seed.py"
-        className="border border-amber/60 bg-amber/15 px-2.5 py-1"
-      >
-        <StatusNode tone="amber" label="LIVE — NO DATA SEEDED" blink />
-      </span>
-    );
-  }
-  // probing → render the optimistic LIVE chip while we wait
-  return (
-    <span
-      title={`Calling the live verifier at ${BACKEND_URL}`}
-      className="border border-signal/40 bg-signal/10 px-2.5 py-1"
-    >
-      <StatusNode tone="signal" label={`live · ${BACKEND_URL.replace(/^https?:\/\//, "")}`} blink />
-    </span>
+        </div>
+        {err && (
+          <p className="mt-2 border-l-2 border-amber bg-amber/10 px-3 py-2 text-sm text-amber">{err}</p>
+        )}
+      </form>
+    </Panel>
   );
 }
 
 // ── User manual (control-room field guide: section index + content pane) ────
-// Documents the CURRENT mock data format / behaviour. Updated on event day when
-// the real spec drops (the data format is isolated behind the backend adapters).
+// Documents the CURRENT (real challenge) contract and behaviour.
 const MANUAL_SECTIONS = [
   {
     id: "overview",
@@ -262,9 +271,9 @@ const MANUAL_SECTIONS = [
           material to finished product.
         </p>
         <p>
-          When a buyer scans a product, the system walks that chain, checks every signature against
-          a registry of accredited suppliers, sums the production cost by country, and returns one
-          of three designations — plus any integrity issues.
+          A buyer loads a chain — the finished product plus all ancestors — and the verifier walks
+          it, checks every signature against a registry of accredited suppliers, sums the production
+          cost by country, and returns one of three designations plus any integrity anomalies.
         </p>
         <ul className="list-disc space-y-1 pl-5">
           <li><b className="text-signal">Product of Canada</b> — ≥ 98% Canadian cost + last transformation in Canada.</li>
@@ -279,19 +288,18 @@ const MANUAL_SECTIONS = [
     title: "How verification works",
     body: (
       <>
-        <p>A verification runs as a fixed, reproducible pipeline:</p>
+        <p>A verification runs as a single stateless request:</p>
         <ol className="list-decimal space-y-1.5 pl-5">
-          <li>Scan a QR code or paste the product&apos;s <b className="text-ink">root hash</b>.</li>
-          <li>The backend collects every attestation reachable from that root and builds the provenance graph, guarding against cycles.</li>
-          <li>Each node is checked in fixed precedence: schema → signature → known issuer → replay → broken link.</li>
+          <li>Load a chain and <b className="text-ink">POST</b> it to <code className="text-cyan">/verify</code> as <code className="text-cyan">{`{ product_attestation_id, attestations }`}</code>.</li>
+          <li>The backend builds the provenance DAG from each attestation&apos;s <code className="text-cyan">parents</code> (any order), guarding against cycles.</li>
+          <li>Each node is checked: signature (Ed25519, registry key), known issuer, parent-hash binding, dangling parents, replay.</li>
           <li><b className="text-ink">Mass-balance:</b> a node may not consume more of an input than was produced upstream.</li>
-          <li><b className="text-ink">Cost attribution:</b> each node&apos;s cost (materials + labour) is summed by country, in integer cents.</li>
-          <li><b className="text-ink">Verdict:</b> the 98% / 51% thresholds are applied <i>and</i> the last substantial transformation must be in Canada.</li>
-          <li><b className="text-ink">Advisory scoring</b> (anomaly + criticality) runs alongside but never changes the verdict.</li>
+          <li><b className="text-ink">Cost attribution:</b> each node&apos;s cost (material_cad + labour_cost_cad) is summed by <code className="text-cyan">performed_in_country</code>.</li>
+          <li><b className="text-ink">Verdict:</b> the 98% / 51% thresholds apply <i>and</i> the last substantial transformation must be in Canada.</li>
         </ol>
         <p className="text-faint">
-          A failed node is excluded from the cost sum rather than crashing the run, so the system
-          still returns a useful answer on imperfect data.
+          The response carries no graph; this terminal draws the chain-of-custody view from the
+          attestations it submitted.
         </p>
       </>
     ),
@@ -315,26 +323,22 @@ const MANUAL_SECTIONS = [
           </thead>
           <tbody>
             <tr className="border-b border-line">
-              <td className="py-1.5 pr-3 font-medium text-signal">Product of Canada</td>
+              <td className="py-1.5 pr-3 font-medium text-signal">product_of_canada</td>
               <td className="pr-3">≥ 98%</td>
               <td>in Canada</td>
             </tr>
             <tr className="border-b border-line">
-              <td className="py-1.5 pr-3 font-medium text-signal">Made in Canada</td>
+              <td className="py-1.5 pr-3 font-medium text-signal">made_in_canada</td>
               <td className="pr-3">≥ 51%</td>
               <td>in Canada</td>
             </tr>
             <tr>
-              <td className="py-1.5 pr-3 font-medium text-alarm">None</td>
+              <td className="py-1.5 pr-3 font-medium text-alarm">none</td>
               <td className="pr-3">&lt; 51%</td>
               <td>or not in Canada</td>
             </tr>
           </tbody>
         </table>
-        <p className="text-faint">
-          Comparisons use integer cross-multiplication (never divide-then-compare), so the result is
-          exact and reproducible.
-        </p>
       </>
     ),
   },
@@ -344,64 +348,56 @@ const MANUAL_SECTIONS = [
     body: (
       <>
         <p>
-          Money is handled as <b className="text-ink">integer cents</b> end-to-end. For each valid
-          node, its own cost (materials + labour) is attributed to its country of work; the Canadian
-          percentage is Canadian cents over total cents.
-        </p>
-        <p>
-          <b className="text-ink">Value-add</b> = labour ÷ (materials + labour) — the share of a
-          node&apos;s own cost that is transformation rather than bought-in material.
+          Each attestation&apos;s own cost is <code className="text-cyan">material_cad + labour_cost_cad</code>,
+          attributed to its <code className="text-cyan">performed_in_country</code>. The Canadian percentage
+          is a flat sum of Canadian cost over total cost across all attestations.
+          <b className="text-ink"> labour_hours is not a cost</b> and does not enter the percentage.
         </p>
         <p>
           The <b className="text-cyan">calculation detail</b> button on a result opens a breakdown:
-          a cost-by-country share and a per-component contribution chart, so you can see exactly how
-          the percentage was reached. Nodes that failed an integrity check contribute $0 and are
-          marked excluded.
+          a cost-by-country share and a per-component contribution chart, derived locally from the
+          submitted chain so you can see how the percentage was reached.
         </p>
       </>
     ),
   },
   {
     id: "integrity",
-    title: "Integrity & reason codes",
+    title: "Integrity & anomaly types",
     body: (
       <>
-        <p>Checks are applied per node in a fixed precedence; the first match wins:</p>
-        <p className="font-mono text-xs text-signal/80">
-          MALFORMED → SIGNATURE_INVALID → UNKNOWN_ISSUER → REPLAY_DETECTED → BROKEN_LINK / CYCLE →
-          MASS_BALANCE
+        <p>
+          The verifier returns <code className="text-cyan">chain_valid</code> plus an{" "}
+          <code className="text-cyan">anomalies</code> list. Each anomaly is{" "}
+          <code className="text-cyan">{`{ type, attestation_id, details }`}</code>. The{" "}
+          <code className="text-cyan">type</code> is a free-form snake_case label — these are the
+          common ones, but the set is not exhaustive:
         </p>
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-line text-left text-faint">
-              <th className="py-1.5 pr-3">Reason</th>
-              <th className="pr-3">Meaning</th>
-              <th>Effect</th>
+              <th className="py-1.5 pr-3">type</th>
+              <th>Meaning</th>
             </tr>
           </thead>
           <tbody>
             {[
-              ["MALFORMED", "fails schema validation", "rejected"],
-              ["SIGNATURE_INVALID", "signature does not verify", "node excluded"],
-              ["UNKNOWN_ISSUER", "signer not a verified registry key", "node excluded"],
-              ["REPLAY_DETECTED", "reused (issuer, output) serial", "node excluded"],
-              ["BROKEN_LINK", "missing / duplicate input reference", "node excluded"],
-              ["CYCLE", "references form a loop", "whole chain → None"],
-              ["MASS_BALANCE", "consumed > produced upstream", "hard reject → None"],
-              ["TEMPORAL_INVERSION", "input dated after its consumer", "advisory flag"],
-              ["ANOMALY", "implausible cost shape (ML)", "advisory flag"],
-            ].map(([r, m, e]) => (
+              ["signature_invalid", "signature does not verify"],
+              ["signature_unknown_supplier", "signer not in the registry"],
+              ["parent_hash_mismatch", "parent content_hash ≠ recomputed hash"],
+              ["mass_balance_violation", "consumed > produced upstream"],
+              ["circular_reference", "references form a loop"],
+              ["dangling_parent", "referenced parent missing from the chain"],
+              ["timestamp_inversion", "input dated after its consumer"],
+              ["unit_mismatch", "consumed unit ≠ parent output unit"],
+            ].map(([r, m]) => (
               <tr key={r} className="border-b border-line align-top">
                 <td className="py-1.5 pr-3 font-mono text-xs text-cyan">{r}</td>
-                <td className="pr-3">{m}</td>
-                <td className="text-faint">{e}</td>
+                <td className="text-dim">{m}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <p className="text-faint">
-          Advisory flags queue a record for human review but never change the designation.
-        </p>
       </>
     ),
   },
@@ -410,11 +406,7 @@ const MANUAL_SECTIONS = [
     title: "Attestation data format",
     body: (
       <>
-        <p>
-          An attestation is the signed unit of provenance. <b className="text-ink">Note:</b> this is
-          the current mock contract — the event-day specification replaces the exact field
-          names/format, which is isolated behind the backend&apos;s adapter layer.
-        </p>
+        <p>An attestation is the signed unit of provenance (challenge schema v1.0):</p>
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-line text-left text-faint">
@@ -425,15 +417,15 @@ const MANUAL_SECTIONS = [
           </thead>
           <tbody>
             {[
+              ["attestation_id", "string", "att- + UUID, globally unique"],
               ["supplier_id", "string", "maps to a registry key"],
-              ["output.product_id / quantity / unit", "string / int / string", "what this node produced"],
-              ["inputs[]", "{ attestation_hash, quantity_used }", "what it consumed"],
-              ["materials_cents", "int", "integer cents, ≥ 0"],
-              ["labour_cents", "int", "integer cents, ≥ 0"],
-              ["work_country", "string", "ISO-2, e.g. CA / CN"],
-              ["is_substantial_transformation", "bool", "spec-dependent flag"],
-              ["timestamp", "string", "ISO-8601, ordering only"],
-              ["signature", "string", "base64 Ed25519 over the payload"],
+              ["action_type", "enum", "raw_material_supply | component_manufacture | subassembly | final_integration"],
+              ["performed_in_country", "string", "ISO-2 where THIS step's work occurred"],
+              ["parents[]", "{ attestation_id, content_hash, quantity_consumed, unit }", "what it consumed"],
+              ["output", "{ name, quantity_produced, unit }", "what this node produced"],
+              ["costs", "{ material_cad, labour_hours, labour_cost_cad }", "CAD floats; hours ≥ 4 ⇒ ST"],
+              ["timestamp", "string", "ISO-8601 UTC, Z suffix"],
+              ["signature", "{ algorithm, value }", "ed25519, base64 over canonical bytes (signature excluded)"],
             ].map(([f, t, n]) => (
               <tr key={f} className="border-b border-line align-top">
                 <td className="py-1.5 pr-3 font-mono text-xs text-cyan">{f}</td>
@@ -444,15 +436,17 @@ const MANUAL_SECTIONS = [
           </tbody>
         </table>
         <pre className="overflow-x-auto border border-line bg-base p-3 text-xs text-signal/90">{`{
-  "supplier_id": "SUP-DRONE",
-  "output": { "product_id": "drone_X1", "quantity": 1, "unit": "pcs" },
-  "inputs": [{ "attestation_hash": "…", "quantity_used": 1 }],
-  "materials_cents": 20,
-  "labour_cents": 400,
-  "work_country": "CA",
-  "is_substantial_transformation": true,
-  "timestamp": "2026-05-03T08:00:00Z",
-  "signature": "<base64 Ed25519>"
+  "attestation_id": "att-anchor-0005",
+  "version": "1.0",
+  "supplier_id": "sup-avss-corp",
+  "timestamp": "2026-03-21T14:30:00Z",
+  "action_type": "component_manufacture",
+  "performed_in_country": "CA",
+  "parents": [{ "attestation_id": "att-anchor-0001",
+                "content_hash": "1ed6d6cc…", "quantity_consumed": 8.0, "unit": "m2" }],
+  "output": { "name": "Parachute Recovery Assembly", "quantity_produced": 1, "unit": "units" },
+  "costs": { "material_cad": 0.0, "labour_hours": 6.5, "labour_cost_cad": 520.0 },
+  "signature": { "algorithm": "ed25519", "value": "<base64>" }
 }`}</pre>
       </>
     ),
@@ -463,20 +457,16 @@ const MANUAL_SECTIONS = [
     body: (
       <>
         <p>
-          Each supplier holds an <b className="text-ink">Ed25519 key pair</b>. The
-          <b className="text-ink"> private key</b> (kept secret) signs attestations; the
-          <b className="text-ink"> public key</b> is registered once, with an accreditation
-          authority, into the supplier registry.
+          Each supplier holds an <b className="text-ink">Ed25519 key pair</b>. The private key signs
+          attestations; the public key is registered, once, into the supplier registry. The verifier
+          looks up each <code className="text-cyan">supplier_id</code> to get the trusted public key
+          and verifies <code className="text-cyan">signature.value</code> against the attestation&apos;s
+          canonical bytes (with <code className="text-cyan">signature</code> excluded).
         </p>
         <p>
-          The purchaser never needs to know who a supplier is to trust the result: the backend looks
-          up each <code className="text-cyan">supplier_id</code> in the read-only registry to get the
-          trusted public key and verifies the signature. A QR code carries only the
-          <b className="text-ink"> root hash</b> — a pointer, never a key.
-        </p>
-        <p>
-          An attestation signed by a key the registry does not trust for that supplier is rejected
-          (UNKNOWN_ISSUER / SIGNATURE_INVALID).
+          A valid signature is necessary but not sufficient: all private keys ship with the kit, so a
+          sophisticated attacker can sign a fabricated chain. Robust detection also checks internal
+          consistency — hashes, mass-balance, timestamps, plausibility.
         </p>
       </>
     ),
@@ -487,13 +477,14 @@ const MANUAL_SECTIONS = [
     body: (
       <>
         <p>
-          The provenance graph is the verified supply chain. Each node is a supplier contribution;
-          arrows point from an input to the consumer that used it.
+          The provenance graph is the supply chain you submitted. Each node is a supplier
+          contribution; arrows point from an input to the consumer that used it. It is drawn locally
+          from the attestations&apos; <code className="text-cyan">parents</code> references.
         </p>
         <ul className="list-disc space-y-1 pl-5">
-          <li><span className="font-medium text-signal">Green</span> — Canadian, integrity OK.</li>
-          <li><span className="font-medium text-dim">Grey</span> — foreign, integrity OK.</li>
-          <li><span className="font-medium text-alarm">Red</span> — failed an integrity check (excluded from the cost sum).</li>
+          <li><span className="font-medium text-signal">Green</span> — Canadian, no anomaly.</li>
+          <li><span className="font-medium text-dim">Grey</span> — foreign, no anomaly.</li>
+          <li><span className="font-medium text-alarm">Red</span> — flagged by an anomaly in the response.</li>
         </ul>
       </>
     ),
@@ -505,8 +496,7 @@ const MANUAL_SECTIONS = [
       <>
         <p>
           An <b className="text-ink">advisory</b> lens, separate from the legal verdict — it never
-          changes the designation. It answers &quot;is cost % the only meaningful metric?&quot; by
-          showing where the transformation / IP sits.
+          changes the designation. Value-add = labour share of a component&apos;s own cost.
         </p>
         <ul className="list-disc space-y-1 pl-5">
           <li><b className="text-alarm">critical</b> — a substantial transformation or high value-add (key IP).</li>
@@ -518,62 +508,6 @@ const MANUAL_SECTIONS = [
           <b className="text-amber"> ⚠ offshore</b> — a strategic dependency worth watching.
         </p>
       </>
-    ),
-  },
-  {
-    id: "ledger",
-    title: "Transparency ledger",
-    body: (
-      <>
-        <p>
-          Every accepted attestation is appended to an{" "}
-          <b>append-only transparency log</b> kept by the verifier (SQLite-backed,
-          one row per submission).
-        </p>
-        <p>
-          Each log entry stores its own{" "}
-          <code className="text-cyan">chain_hash = sha256(prev_chain || attestation_hash)</code>
-          {" — "}so every entry commits to the fingerprint of all previous entries.
-          A tampered prior row breaks the chain on the next verify-pass.
-        </p>
-        <ul className="list-disc space-y-1 pl-5">
-          <li>Anchored nodes carry a <code className="text-signal">#seq</code> badge in the provenance graph.</li>
-          <li><code className="text-signal">GET /log/head</code> returns the current chain head — a single hex string that summarises the whole ledger.</li>
-          <li><code className="text-signal">GET /log/&#123;hash&#125;</code> answers &quot;is this attestation in the ledger?&quot;.</li>
-        </ul>
-        <p className="text-faint">
-          Roadmap: the rolling chain hash is the simplest tamper-evident structure.
-          Full Merkle-tree inclusion proofs (Sigsum-style) are the next layer.
-        </p>
-      </>
-    ),
-  },
-  {
-    id: "glossary",
-    title: "Glossary",
-    body: (
-      <dl className="space-y-2">
-        <div>
-          <dt className="font-medium text-ink">Attestation</dt>
-          <dd className="text-dim">A signed record of one supplier&apos;s contribution.</dd>
-        </div>
-        <div>
-          <dt className="font-medium text-ink">Root hash</dt>
-          <dd className="text-dim">SHA-256 content address of the finished product&apos;s attestation; what a QR encodes.</dd>
-        </div>
-        <div>
-          <dt className="font-medium text-ink">Substantial transformation</dt>
-          <dd className="text-dim">A step that changes the form/nature of inputs (e.g. aluminum → motor housing).</dd>
-        </div>
-        <div>
-          <dt className="font-medium text-ink">Value-add</dt>
-          <dd className="text-dim">Labour share of a node&apos;s own cost.</dd>
-        </div>
-        <div>
-          <dt className="font-medium text-ink">Registry</dt>
-          <dd className="text-dim">Read-only list of accredited suppliers&apos; public keys.</dd>
-        </div>
-      </dl>
     ),
   },
 ];
@@ -631,10 +565,9 @@ function Manual({ onClose }) {
   );
 }
 
-function CostDetailModal({ result, graph, onClose }) {
-  const total = result.total_cost_cents || 0;
-  const byCountry = result.cost_by_country || {};
-  const dollars = (c) => `$${((c || 0) / 100).toFixed(2)}`;
+function CostDetailModal({ result, cost, onClose }) {
+  const total = cost?.totalCad || 0;
+  const byCountry = cost?.byCountry || {};
   const pctOf = (c) => (total ? Math.round(((c || 0) / total) * 1000) / 10 : 0);
 
   // Cost-by-country share via conic-gradient (CA = signal green, others cycle).
@@ -655,11 +588,8 @@ function CostDetailModal({ result, graph, onClose }) {
       ? `conic-gradient(${slices.map((s) => `${s.color} ${s.start}deg ${s.end}deg`).join(",")})`
       : "var(--color-line)";
 
-  const nodes = (graph?.nodes || [])
-    .slice()
-    .sort((a, b) => (b.contribution_cents || 0) - (a.contribution_cents || 0));
-  const maxContrib = Math.max(1, ...nodes.map((n) => n.contribution_cents || 0));
-  const haveContrib = nodes.some((n) => (n.contribution_cents || 0) > 0);
+  const nodes = (cost?.perNode || []).slice().sort((a, b) => (b.cad || 0) - (a.cad || 0));
+  const maxContrib = Math.max(1, ...nodes.map((n) => n.cad || 0));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/80 p-4 backdrop-blur" onClick={onClose}>
@@ -683,15 +613,16 @@ function CostDetailModal({ result, graph, onClose }) {
 
         <div className="p-5">
           <p className="prose-sans text-sm text-dim">
-            Each component&apos;s cost contribution, attributed to where the work happened.
+            Each component&apos;s cost (material + labour), attributed to where the work happened.
+            Derived locally from the submitted chain; the headline percentage is the backend&apos;s.
           </p>
 
           <div className="mt-4 border border-line bg-base p-4 text-center">
             <div className="text-3xl font-semibold tabular-nums text-signal glow-signal">
-              {((result.canadian_pct || 0) * 100).toFixed(1)}%
+              {formatPct(result.canadian_content_percentage)}
             </div>
             <div className="mt-1 text-sm text-dim">
-              {dollars(result.canadian_cost_cents)} Canadian of {dollars(total)} total
+              {formatCad(cost?.canadianCad)} Canadian of {formatCad(total)} total
             </div>
             <div className="mt-1 text-[11px] uppercase tracking-[0.12em] text-faint">
               Product of Canada ≥ 98% · Made in Canada ≥ 51% (last transformation in Canada)
@@ -709,9 +640,9 @@ function CostDetailModal({ result, graph, onClose }) {
               {slices.map((s) => (
                 <li key={s.country} className="flex items-center gap-2">
                   <span className="inline-block h-3 w-3" style={{ backgroundColor: s.color }} />
-                  <span className="font-medium text-ink">{s.country}</span>
+                  <span className="font-medium text-ink">{countryName(s.country)}</span>
                   <span className="text-dim">
-                    {dollars(s.c)} · {pctOf(s.c)}%
+                    {formatCad(s.c)} · {pctOf(s.c)}%
                   </span>
                 </li>
               ))}
@@ -721,47 +652,40 @@ function CostDetailModal({ result, graph, onClose }) {
           <h3 className="mt-6 mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-cyan">
             Per-component contribution
           </h3>
-          {haveContrib ? (
-            <ul className="space-y-2.5">
-              {nodes.map((n) => {
-                const c = n.contribution_cents || 0;
-                const excluded = c === 0;
-                const barColor = excluded
-                  ? "var(--color-alarm)"
-                  : n.country === "CA"
-                  ? "var(--color-signal)"
-                  : "var(--color-dim)";
-                return (
-                  <li key={n.id}>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-ink">
-                        {n.product_id}{" "}
-                        <span className="text-xs text-faint">· {n.supplier_id} · {n.country}</span>
-                      </span>
-                      <span className="text-dim">
-                        {dollars(c)} · {pctOf(c)}%{excluded ? " · excluded" : ""}
-                      </span>
-                    </div>
-                    <div className="mt-1 h-2 w-full overflow-hidden border border-line bg-base">
-                      <div
-                        className="h-full"
-                        style={{ width: `${Math.round((c / maxContrib) * 100)}%`, backgroundColor: barColor }}
-                      />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <p className="text-sm text-faint">
-              Per-component breakdown is available in live mode (append <code className="text-cyan">?mock=0</code>).
-            </p>
-          )}
+          <ul className="space-y-2.5">
+            {nodes.map((n) => {
+              const c = n.cad || 0;
+              const zero = c === 0;
+              const barColor = zero
+                ? "var(--color-dim)"
+                : n.country === "CA"
+                ? "var(--color-signal)"
+                : "var(--color-dim)";
+              return (
+                <li key={n.id}>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-ink">
+                      {n.name}{" "}
+                      <span className="text-xs text-faint">· {n.supplier_id} · {n.country}</span>
+                    </span>
+                    <span className="text-dim">
+                      {formatCad(c)} · {pctOf(c)}%
+                    </span>
+                  </div>
+                  <div className="mt-1 h-2 w-full overflow-hidden border border-line bg-base">
+                    <div
+                      className="h-full"
+                      style={{ width: `${Math.round((c / maxContrib) * 100)}%`, backgroundColor: barColor }}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
 
           <p className="prose-sans mt-5 text-xs text-faint">
-            Green = Canadian cost · grey = foreign · red = excluded (failed an integrity check, so it
-            does not count toward the total). These are the verified amounts the verdict was computed
-            from.
+            Green = Canadian cost · grey = foreign or zero-cost. These are the verified amounts the
+            verdict was computed from.
           </p>
         </div>
       </div>
@@ -769,9 +693,9 @@ function CostDetailModal({ result, graph, onClose }) {
   );
 }
 
-function CriticalityPanel({ graph }) {
-  const nodes = (graph?.nodes || []).filter((n) => n.criticality);
-  if (nodes.length === 0) return null;
+function CriticalityPanel({ nodes }) {
+  const list = (nodes || []).filter((n) => n.component_class);
+  if (list.length === 0) return null;
   const order = ["critical", "standard", "commodity"];
   const tone = {
     critical: "border-alarm/40 bg-alarm/10 text-alarm",
@@ -787,8 +711,8 @@ function CriticalityPanel({ graph }) {
       </p>
       <ul className="mt-3 space-y-2">
         {order.flatMap((cls) =>
-          nodes
-            .filter((n) => n.criticality.component_class === cls)
+          list
+            .filter((n) => n.component_class === cls)
             .map((n) => (
               <li
                 key={n.id}
@@ -796,7 +720,7 @@ function CriticalityPanel({ graph }) {
               >
                 <span className="flex items-center gap-2">
                   <span>
-                    {n.product_id}{" "}
+                    {n.name}{" "}
                     <span className="text-xs opacity-70">· {n.supplier_id} · {n.country}</span>
                   </span>
                   {cls === "critical" && n.country !== "CA" && (
@@ -806,79 +730,12 @@ function CriticalityPanel({ graph }) {
                   )}
                 </span>
                 <span className="text-[11px] font-semibold uppercase tracking-[0.1em]">
-                  {cls} · {Math.round((n.criticality.value_add_pct || 0) * 100)}% value-add
+                  {cls} · {Math.round((n.value_add_pct || 0) * 100)}% value-add
                 </span>
               </li>
             ))
         )}
       </ul>
-    </Panel>
-  );
-}
-
-function AskPanel({ rootHash }) {
-  const [q, setQ] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [ans, setAns] = useState(null);
-  const [err, setErr] = useState("");
-
-  async function ask() {
-    setBusy(true);
-    setErr("");
-    setAns(null);
-    try {
-      const res = await fetch(`${BACKEND_URL}/ask`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q, root_hash: rootHash }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setErr(data.detail || `Verifier unavailable (HTTP ${res.status}).`);
-        return;
-      }
-      setAns(data);
-    } catch (e) {
-      setErr(`Could not reach backend: ${e.message}`);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Panel label="query ledger" accent="cyan" right="natural language">
-      <p className="prose-sans text-sm text-dim">
-        Natural-language verifier — answers cite attestation ids; every number comes from the
-        verified math, never the model.
-      </p>
-      <div className="mt-3 flex gap-2">
-        <input
-          className="min-w-0 flex-1 border border-line bg-base px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-cyan focus:outline-none"
-          placeholder="e.g. Which inputs come from outside Canada?"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && q.trim() && ask()}
-        />
-        <button
-          type="button"
-          onClick={ask}
-          disabled={busy || !q.trim()}
-          className="border border-cyan bg-cyan/10 px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em] text-cyan transition hover:bg-cyan/20 disabled:opacity-50"
-        >
-          {busy ? "…" : "ask"}
-        </button>
-      </div>
-      {err && <p className="mt-2 text-xs text-amber">{err}</p>}
-      {ans && (
-        <div className="prose-sans mt-3 border border-line bg-base p-3 text-sm text-ink">
-          <p>{ans.answer}</p>
-          {ans.citations?.length > 0 && (
-            <p className="mt-2 font-mono text-xs text-faint">
-              cites: {ans.citations.map((c) => c.slice(0, 10)).join(", ")}
-            </p>
-          )}
-        </div>
-      )}
     </Panel>
   );
 }

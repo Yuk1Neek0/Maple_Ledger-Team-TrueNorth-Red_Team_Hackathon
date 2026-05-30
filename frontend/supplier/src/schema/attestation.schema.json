@@ -1,59 +1,68 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Maple Ledger Supplier Attestation (signed payload)",
-  "description": "The signed attestation payload. Keys are canonicalized (recursively sorted, compact) before signing. The 'signature' field is added AFTER signing and is therefore not part of this signed-payload schema.",
+  "title": "Maple Ledger Attestation (signed payload, challenge schema v1.0)",
+  "description": "The signed attestation payload per provenance-kit/spec/attestation-schema.md. Keys are canonicalized (recursively sorted, compact, whole-floats as integers) before signing. The 'signature' field is added AFTER signing and is therefore not part of this signed-payload schema.",
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "attestation_id",
+    "version",
     "supplier_id",
+    "timestamp",
+    "action_type",
+    "performed_in_country",
+    "parents",
     "output",
-    "inputs",
-    "materials_cents",
-    "labour_cents",
-    "work_country",
-    "is_substantial_transformation",
-    "timestamp"
+    "costs"
   ],
   "properties": {
-    "supplier_id": {
+    "attestation_id": { "type": "string", "minLength": 1 },
+    "version": { "type": "string", "minLength": 1 },
+    "supplier_id": { "type": "string", "minLength": 1 },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "action_type": {
       "type": "string",
-      "minLength": 1
+      "enum": [
+        "raw_material_supply",
+        "component_manufacture",
+        "subassembly",
+        "final_integration"
+      ]
     },
-    "output": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["product_id", "quantity", "unit"],
-      "properties": {
-        "product_id": { "type": "string", "minLength": 1 },
-        "quantity": { "type": "integer", "minimum": 0 },
-        "unit": { "type": "string", "minLength": 1 }
-      }
-    },
-    "inputs": {
+    "performed_in_country": { "type": "string", "pattern": "^[A-Z]{2}$" },
+    "parents": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["attestation_hash", "quantity_used"],
+        "required": ["attestation_id", "content_hash", "quantity_consumed", "unit"],
         "properties": {
-          "attestation_hash": {
-            "type": "string",
-            "pattern": "^[0-9a-f]+$"
-          },
-          "quantity_used": { "type": "integer", "minimum": 0 }
+          "attestation_id": { "type": "string", "minLength": 1 },
+          "content_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "quantity_consumed": { "type": "number", "minimum": 0 },
+          "unit": { "type": "string", "minLength": 1 }
         }
       }
     },
-    "materials_cents": { "type": "integer", "minimum": 0 },
-    "labour_cents": { "type": "integer", "minimum": 0 },
-    "work_country": {
-      "type": "string",
-      "pattern": "^[A-Z]{2}$"
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "quantity_produced", "unit"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "quantity_produced": { "type": "number", "minimum": 0 },
+        "unit": { "type": "string", "minLength": 1 }
+      }
     },
-    "is_substantial_transformation": { "type": "boolean" },
-    "timestamp": {
-      "type": "string",
-      "format": "date-time"
+    "costs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["material_cad", "labour_hours", "labour_cost_cad"],
+      "properties": {
+        "material_cad": { "type": "number", "minimum": 0 },
+        "labour_hours": { "type": "number", "minimum": 0 },
+        "labour_cost_cad": { "type": "number", "minimum": 0 }
+      }
     }
   }
 }

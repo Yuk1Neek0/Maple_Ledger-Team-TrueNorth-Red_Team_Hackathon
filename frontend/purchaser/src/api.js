@@ -1,38 +1,39 @@
-// Thin client for the verifier backend.
+// Thin client for the real verifier backend.
 //
-// In mock mode it resolves to a hardcoded VerificationResult after a short
-// delay (to exercise the loading state). In live mode it calls
-// GET {BACKEND_URL}/verify/{root_hash} and returns the parsed JSON unchanged —
-// the response is already the contract shape the UI binds to.
+// The contract is a single stateless POST:
+//   POST {BACKEND_URL}/verify
+//   body  { product_attestation_id, attestations: [ {full attestation}, ... ] }
+//   200   { product_attestation_id, canadian_content_percentage (0-100),
+//           designation ("product_of_canada"|"made_in_canada"|"none"),
+//           chain_valid (bool),
+//           anomalies: [ { type, attestation_id, details } ] }
+//
+// The response carries NO graph; the client already holds the submitted chain
+// and builds the topology from each attestation's `parents`.
 
-import { USE_MOCK, verifyUrl } from "./config.js";
-import { mockVerificationResult } from "./mockData.js";
-
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+import { verifyUrl } from "./config.js";
 
 /**
- * Fetch a verification result for a scanned root hash.
- * @param {string} rootHash - the root attestation hash encoded in the QR code
- * @returns {Promise<object>} a VerificationResult (see mockData.js for shape)
+ * Verify a whole provenance chain.
+ * @param {{ product_attestation_id: string, attestations: object[] }} chain
+ * @returns {Promise<object>} the real /verify response shape
  */
-export async function fetchVerification(rootHash) {
-  if (!rootHash || !rootHash.trim()) {
-    throw new Error("No root hash provided.");
-  }
-  const hash = rootHash.trim();
-
-  if (USE_MOCK) {
-    await delay(400);
-    // Echo nothing about the hash — the mock is fixed by design.
-    return mockVerificationResult;
+export async function verifyChain(chain) {
+  if (!chain || !chain.product_attestation_id || !Array.isArray(chain.attestations)) {
+    throw new Error(
+      "Chain must be { product_attestation_id, attestations: [...] }."
+    );
   }
 
   let res;
   try {
-    res = await fetch(verifyUrl(hash), {
-      headers: { Accept: "application/json" },
+    res = await fetch(verifyUrl(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(chain),
     });
   } catch (networkErr) {
     throw new Error(
@@ -42,9 +43,14 @@ export async function fetchVerification(rootHash) {
   }
 
   if (!res.ok) {
-    throw new Error(
-      `Verifier returned HTTP ${res.status} ${res.statusText}.`
-    );
+    let detail = "";
+    try {
+      const data = await res.json();
+      detail = data?.detail ? ` — ${JSON.stringify(data.detail)}` : "";
+    } catch {
+      /* non-JSON body */
+    }
+    throw new Error(`Verifier returned HTTP ${res.status} ${res.statusText}.${detail}`);
   }
 
   return res.json();

@@ -2,8 +2,10 @@ import { useMemo, useState } from "react";
 import { canonicalize } from "./lib/canonical.js";
 import { validatePayload } from "./lib/validate.js";
 import {
+  contentHash,
   generateKeypair,
   keypairFromPrivateHex,
+  keypairFromPrivateB64,
   signPayload,
   verifyPayload,
 } from "./lib/crypto.js";
@@ -17,6 +19,13 @@ const STEP_FORM = "form";
 const STEP_CONFIRM = "confirm";
 const STEP_DONE = "done";
 
+const ACTION_TYPES = [
+  "raw_material_supply",
+  "component_manufacture",
+  "subassembly",
+  "final_integration",
+];
+
 // Shared control-surface button styles.
 const BTN_CYAN =
   "inline-flex items-center justify-center gap-2 border border-cyan bg-cyan/10 px-5 py-2 text-sm font-semibold uppercase tracking-[0.14em] text-cyan transition hover:bg-cyan/20 disabled:cursor-not-allowed disabled:opacity-40";
@@ -28,51 +37,83 @@ const BTN_GHOST =
 const inputClass =
   "mt-1 w-full border border-line bg-base px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-cyan focus:outline-none";
 
-function emptyInput() {
-  return { attestation_hash: "", quantity_used: "1" };
+// A random att- UUID v4 for a fresh attestation id.
+function newAttestationId() {
+  const uuid =
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+          const r = (Math.random() * 16) | 0;
+          const v = c === "x" ? r : (r & 0x3) | 0x8;
+          return v.toString(16);
+        });
+  return `att-${uuid}`;
 }
 
-// Default form values matching the spec's worked example.
+function emptyParent() {
+  return { attestation_id: "", content_hash: "", quantity_consumed: "1", unit: "units" };
+}
+
+// Default form values matching the worked-example parachute component.
 function defaultForm() {
   return {
-    supplier_id: "SUP-ALU",
-    output_product_id: "raw_aluminum",
+    attestation_id: newAttestationId(),
+    version: "1.0",
+    supplier_id: "sup-avss-corp",
+    timestamp: "2026-03-21T14:30:00Z",
+    action_type: "component_manufacture",
+    performed_in_country: "CA",
+    parents: [
+      {
+        attestation_id: "att-anchor-0001",
+        content_hash: "1ed6d6cc7b1526c7473ad8532a6f8ae5e17470bc09434f5da51e9d33c2cddaa4",
+        quantity_consumed: "8",
+        unit: "m2",
+      },
+    ],
+    output_name: "Parachute Recovery Assembly",
     output_quantity: "1",
-    output_unit: "kg",
-    inputs: [],
-    materials_cents: "500",
-    labour_cents: "200",
-    work_country: "CA",
-    is_substantial_transformation: false,
-    timestamp: "2026-05-01T08:00:00Z",
+    output_unit: "units",
+    material_cad: "0",
+    labour_hours: "6.5",
+    labour_cost_cad: "520",
   };
 }
 
-// Build the signed-payload object from raw form strings. Numbers are coerced to
-// integers; anything non-integer is left as the raw value so validation reports it.
+// Build the signed-attestation object from raw form strings. Numbers are coerced
+// to JS numbers; anything that isn't a finite number is left as the raw value so
+// validation reports it.
 function buildPayload(form) {
-  const toInt = (v) => {
+  const toNum = (v) => {
     const t = String(v).trim();
-    if (t === "" || !/^-?\d+$/.test(t)) return v; // keep raw -> validation fails
-    return Number(t);
+    if (t === "") return v; // keep raw -> validation fails
+    const n = Number(t);
+    return Number.isFinite(n) ? n : v;
   };
 
   return {
+    attestation_id: form.attestation_id.trim(),
+    version: form.version.trim(),
     supplier_id: form.supplier_id.trim(),
+    timestamp: form.timestamp.trim(),
+    action_type: form.action_type,
+    performed_in_country: form.performed_in_country.trim().toUpperCase(),
+    parents: form.parents.map((p) => ({
+      attestation_id: p.attestation_id.trim(),
+      content_hash: p.content_hash.trim().toLowerCase(),
+      quantity_consumed: toNum(p.quantity_consumed),
+      unit: p.unit.trim(),
+    })),
     output: {
-      product_id: form.output_product_id.trim(),
-      quantity: toInt(form.output_quantity),
+      name: form.output_name.trim(),
+      quantity_produced: toNum(form.output_quantity),
       unit: form.output_unit.trim(),
     },
-    inputs: form.inputs.map((i) => ({
-      attestation_hash: i.attestation_hash.trim().toLowerCase(),
-      quantity_used: toInt(i.quantity_used),
-    })),
-    materials_cents: toInt(form.materials_cents),
-    labour_cents: toInt(form.labour_cents),
-    work_country: form.work_country.trim().toUpperCase(),
-    is_substantial_transformation: !!form.is_substantial_transformation,
-    timestamp: form.timestamp.trim(),
+    costs: {
+      material_cad: toNum(form.material_cad),
+      labour_hours: toNum(form.labour_hours),
+      labour_cost_cad: toNum(form.labour_cost_cad),
+    },
   };
 }
 
@@ -95,13 +136,13 @@ export default function App() {
   const [privInput, setPrivInput] = useState("");
   const [keyError, setKeyError] = useState("");
   const [submitState, setSubmitState] = useState({ status: "idle" }); // idle|signing|submitting|done|error
-  const [result, setResult] = useState(null); // { hash, signedBody, canonical, verified }
+  const [result, setResult] = useState(null);
   const [selfTest] = useState(() => {
     const r = runCanonicalSelfTest();
     if (r.pass) {
-      console.log("[canonical self-test] PASS — matches backend bytes:\n" + r.actual);
+      console.log("[canonical self-test] PASS — byte-parity with reference_lib");
     } else {
-      console.error("[canonical self-test] FAIL", r);
+      console.error("[canonical self-test] FAIL", r.checks);
     }
     return r;
   });
@@ -115,31 +156,45 @@ export default function App() {
       return "(cannot canonicalize: " + e.message + ")";
     }
   }, [payload]);
+  // The content_hash a child would reference as parents[].content_hash.
+  const hashPreview = useMemo(() => {
+    try {
+      return validation.valid ? contentHash(payload) : null;
+    } catch {
+      return null;
+    }
+  }, [payload, validation.valid]);
 
   function update(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  function updateInput(idx, key, value) {
+  function updateParent(idx, key, value) {
     setForm((f) => {
-      const inputs = f.inputs.slice();
-      inputs[idx] = { ...inputs[idx], [key]: value };
-      return { ...f, inputs };
+      const parents = f.parents.slice();
+      parents[idx] = { ...parents[idx], [key]: value };
+      return { ...f, parents };
     });
   }
 
-  function addInput() {
-    setForm((f) => ({ ...f, inputs: [...f.inputs, emptyInput()] }));
+  function addParent() {
+    setForm((f) => ({ ...f, parents: [...f.parents, emptyParent()] }));
   }
 
-  function removeInput(idx) {
-    setForm((f) => ({ ...f, inputs: f.inputs.filter((_, i) => i !== idx) }));
+  function removeParent(idx) {
+    setForm((f) => ({ ...f, parents: f.parents.filter((_, i) => i !== idx) }));
   }
 
   function applyPastedKey() {
     setKeyError("");
+    const v = privInput.trim();
     try {
-      setKeypair(keypairFromPrivateHex(privInput));
+      // Accept either 64-hex-char or base64 (the kit ships base64 seeds).
+      if (/^[0-9a-fA-F]{64}$/.test(v)) {
+        setKeypair(keypairFromPrivateHex(v));
+      } else {
+        setKeypair(keypairFromPrivateB64(v));
+      }
     } catch (e) {
       setKeyError(e.message);
     }
@@ -161,20 +216,31 @@ export default function App() {
     try {
       const { signature, canonical: canonicalStr } = signPayload(payload, keypair.privateKey);
       const verified = verifyPayload(signature, payload, keypair.publicKey);
-      const signedBody = { ...payload, signature };
+      const signedBody = {
+        ...payload,
+        signature: { algorithm: "ed25519", value: signature },
+      };
+      const hash = contentHash(payload);
 
       setSubmitState({ status: "submitting" });
 
-      let hash = null;
+      let backendResult = null;
       let backendError = null;
       try {
-        const resp = await submitAttestation(signedBody);
-        hash = resp.hash ?? null;
+        backendResult = await submitAttestation(signedBody);
       } catch (e) {
         backendError = e.message;
       }
 
-      setResult({ hash, signature, signedBody, canonical: canonicalStr, verified, backendError });
+      setResult({
+        hash,
+        signature,
+        signedBody,
+        canonical: canonicalStr,
+        verified,
+        backendResult,
+        backendError,
+      });
       setSubmitState({ status: backendError ? "error" : "done" });
       setStep(STEP_DONE);
     } catch (e) {
@@ -189,7 +255,7 @@ export default function App() {
     if (!seed) return;
     setKeyError("");
     try {
-      setKeypair(keypairFromPrivateHex(seed));
+      setKeypair(keypairFromPrivateB64(seed));
       setPrivInput(seed);
       update("supplier_id", sid);
     } catch (e) {
@@ -198,27 +264,32 @@ export default function App() {
   }
 
   // Apply an AI-drafted attestation to the form. The human still reviews every
-  // field and signs — the draft is advisory (build-adopt §4).
+  // field and signs — the draft is advisory.
   function applyDraft(draft) {
     setForm((f) => ({
       ...f,
       supplier_id: draft.supplier_id ?? f.supplier_id,
-      output_product_id: draft.output?.product_id ?? f.output_product_id,
+      action_type: ACTION_TYPES.includes(draft.action_type) ? draft.action_type : f.action_type,
+      performed_in_country: draft.performed_in_country ?? f.performed_in_country,
+      output_name: draft.output?.name ?? f.output_name,
       output_quantity:
-        draft.output?.quantity != null ? String(draft.output.quantity) : f.output_quantity,
+        draft.output?.quantity_produced != null
+          ? String(draft.output.quantity_produced)
+          : f.output_quantity,
       output_unit: draft.output?.unit ?? f.output_unit,
-      materials_cents:
-        draft.materials_cents != null ? String(draft.materials_cents) : f.materials_cents,
-      labour_cents: draft.labour_cents != null ? String(draft.labour_cents) : f.labour_cents,
-      work_country: draft.work_country ?? f.work_country,
-      is_substantial_transformation: !!draft.is_substantial_transformation,
+      material_cad: draft.costs?.material_cad != null ? String(draft.costs.material_cad) : f.material_cad,
+      labour_hours: draft.costs?.labour_hours != null ? String(draft.costs.labour_hours) : f.labour_hours,
+      labour_cost_cad:
+        draft.costs?.labour_cost_cad != null ? String(draft.costs.labour_cost_cad) : f.labour_cost_cad,
       timestamp: draft.timestamp ?? f.timestamp,
-      inputs: Array.isArray(draft.inputs)
-        ? draft.inputs.map((i) => ({
-            attestation_hash: i.attestation_hash ?? "",
-            quantity_used: String(i.quantity_used ?? "1"),
+      parents: Array.isArray(draft.parents)
+        ? draft.parents.map((p) => ({
+            attestation_id: p.attestation_id ?? "",
+            content_hash: p.content_hash ?? "",
+            quantity_consumed: String(p.quantity_consumed ?? "1"),
+            unit: p.unit ?? "units",
           }))
-        : f.inputs,
+        : f.parents,
     }));
   }
 
@@ -269,6 +340,7 @@ export default function App() {
               payload={payload}
               validation={validation}
               canonical={canonical}
+              hashPreview={hashPreview}
               keypair={keypair}
               privInput={privInput}
               setPrivInput={setPrivInput}
@@ -276,9 +348,9 @@ export default function App() {
               applyPastedKey={applyPastedKey}
               regenerateKey={regenerateKey}
               update={update}
-              updateInput={updateInput}
-              addInput={addInput}
-              removeInput={removeInput}
+              updateParent={updateParent}
+              addParent={addParent}
+              removeParent={removeParent}
               onContinue={goConfirm}
             />
           </div>
@@ -288,6 +360,7 @@ export default function App() {
           <ConfirmStep
             payload={payload}
             canonical={canonical}
+            hashPreview={hashPreview}
             keypair={keypair}
             submitState={submitState}
             onBack={() => setStep(STEP_FORM)}
@@ -299,7 +372,7 @@ export default function App() {
       </main>
 
       <footer className="mx-auto w-full max-w-3xl px-6 pb-10 text-center text-[11px] uppercase tracking-[0.16em] text-faint">
-        backend · <code className="text-dim">{BACKEND_URL}/attestations</code>
+        backend · <code className="text-dim">{BACKEND_URL}/verify</code>
       </footer>
     </div>
   );
@@ -310,7 +383,7 @@ function SelfTestBadge({ selfTest }) {
   const ok = selfTest.pass;
   return (
     <span
-      title={ok ? "Canonical bytes match the backend" : "Canonicalization mismatch — see console"}
+      title={ok ? "Canonical bytes match reference_lib (content_hash fixtures verified)" : "Canonicalization mismatch — see console"}
       className={"border px-2.5 py-1 " + (ok ? "border-signal/40 bg-signal/10" : "border-alarm/40 bg-alarm/10")}
     >
       <StatusNode tone={ok ? "signal" : "alarm"} label={`canonical ${ok ? "pass" : "fail"}`} blink={ok} />
@@ -364,7 +437,7 @@ function AuthoringTools({ onLoadIdentity, onApplyDraft }) {
           ))}
         </select>
         <span className="mt-1 block text-xs text-faint">
-          Loads a key the registry trusts, so the attestation verifies green.
+          Loads a kit private key the registry trusts, so the attestation&apos;s signature verifies.
         </span>
       </label>
 
@@ -373,7 +446,7 @@ function AuthoringTools({ onLoadIdentity, onApplyDraft }) {
       </h3>
       <textarea
         className={inputClass + " prose-sans h-20"}
-        placeholder="e.g. We CNC-milled 50 RAVEN airframes in Ontario, 3 machinists × 6 hrs at $42/hr, from Canadian 6061 billet."
+        placeholder="e.g. We CNC-milled a RAVEN airframe in Ontario, 6.5 labour hours at $80/hr, from Canadian 6061 billet."
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
@@ -392,6 +465,7 @@ function FormStep(props) {
     form,
     validation,
     canonical,
+    hashPreview,
     keypair,
     privInput,
     setPrivInput,
@@ -399,9 +473,9 @@ function FormStep(props) {
     applyPastedKey,
     regenerateKey,
     update,
-    updateInput,
-    addInput,
-    removeInput,
+    updateParent,
+    addParent,
+    removeParent,
     onContinue,
   } = props;
   const payload = props.payload;
@@ -410,85 +484,96 @@ function FormStep(props) {
     <div className="space-y-6">
       <Panel label="attestation" accent="cyan">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Supplier ID">
-            <input className={inputClass} value={form.supplier_id} onChange={(e) => update("supplier_id", e.target.value)} placeholder="SUP-ALU" />
+          <Field label="Attestation ID" hint="att- + UUID, globally unique">
+            <input className={inputClass + " font-mono"} value={form.attestation_id} onChange={(e) => update("attestation_id", e.target.value)} placeholder="att-…" />
           </Field>
-          <Field label="Work country" hint="ISO-2 uppercase, e.g. CA">
-            <input className={inputClass} value={form.work_country} onChange={(e) => update("work_country", e.target.value)} placeholder="CA" maxLength={2} />
+          <Field label="Version" hint='e.g. "1.0"'>
+            <input className={inputClass} value={form.version} onChange={(e) => update("version", e.target.value)} placeholder="1.0" />
+          </Field>
+          <Field label="Supplier ID" hint="must match a registry key">
+            <input className={inputClass} value={form.supplier_id} onChange={(e) => update("supplier_id", e.target.value)} placeholder="sup-avss-corp" />
+          </Field>
+          <Field label="Performed in country" hint="ISO-2 uppercase, e.g. CA">
+            <input className={inputClass} value={form.performed_in_country} onChange={(e) => update("performed_in_country", e.target.value)} placeholder="CA" maxLength={2} />
+          </Field>
+          <Field label="Action type">
+            <select className={inputClass} value={form.action_type} onChange={(e) => update("action_type", e.target.value)}>
+              {ACTION_TYPES.map((a) => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Timestamp" hint="ISO-8601 UTC, ends in Z">
+            <input className={inputClass} value={form.timestamp} onChange={(e) => update("timestamp", e.target.value)} placeholder="2026-03-21T14:30:00Z" />
           </Field>
         </div>
 
         <h3 className="mt-6 mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-dim">Output</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Field label="Product ID">
-            <input className={inputClass} value={form.output_product_id} onChange={(e) => update("output_product_id", e.target.value)} placeholder="raw_aluminum" />
+          <Field label="Name">
+            <input className={inputClass} value={form.output_name} onChange={(e) => update("output_name", e.target.value)} placeholder="Parachute Recovery Assembly" />
           </Field>
-          <Field label="Quantity" hint="integer">
-            <input className={inputClass} value={form.output_quantity} onChange={(e) => update("output_quantity", e.target.value)} inputMode="numeric" />
+          <Field label="Quantity produced" hint="number">
+            <input className={inputClass} value={form.output_quantity} onChange={(e) => update("output_quantity", e.target.value)} inputMode="decimal" />
           </Field>
           <Field label="Unit">
-            <input className={inputClass} value={form.output_unit} onChange={(e) => update("output_unit", e.target.value)} placeholder="kg" />
+            <input className={inputClass} value={form.output_unit} onChange={(e) => update("output_unit", e.target.value)} placeholder="units" />
           </Field>
         </div>
 
-        <h3 className="mt-6 mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-dim">Cost split</h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Materials (cents)" hint="integer cents, e.g. 500 = $5.00">
-            <input className={inputClass} value={form.materials_cents} onChange={(e) => update("materials_cents", e.target.value)} inputMode="numeric" />
+        <h3 className="mt-6 mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-dim">Costs (CAD)</h3>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Field label="Material (CAD)" hint="e.g. 360 or 1.2">
+            <input className={inputClass} value={form.material_cad} onChange={(e) => update("material_cad", e.target.value)} inputMode="decimal" />
           </Field>
-          <Field label="Labour (cents)" hint="integer cents">
-            <input className={inputClass} value={form.labour_cents} onChange={(e) => update("labour_cents", e.target.value)} inputMode="numeric" />
+          <Field label="Labour hours" hint="≥ 4 ⇒ substantial transformation">
+            <input className={inputClass} value={form.labour_hours} onChange={(e) => update("labour_hours", e.target.value)} inputMode="decimal" />
           </Field>
-        </div>
-
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Timestamp" hint="ISO-8601 UTC, ends in Z">
-            <input className={inputClass} value={form.timestamp} onChange={(e) => update("timestamp", e.target.value)} placeholder="2026-05-01T08:00:00Z" />
+          <Field label="Labour cost (CAD)" hint="e.g. 520">
+            <input className={inputClass} value={form.labour_cost_cad} onChange={(e) => update("labour_cost_cad", e.target.value)} inputMode="decimal" />
           </Field>
-          <label className="mt-6 flex items-center gap-2 text-sm text-ink">
-            <input
-              type="checkbox"
-              className="h-4 w-4 border-line bg-base text-cyan accent-cyan focus:ring-cyan"
-              checked={form.is_substantial_transformation}
-              onChange={(e) => update("is_substantial_transformation", e.target.checked)}
-            />
-            Substantial transformation occurred
-          </label>
         </div>
       </Panel>
 
       <Panel
-        label="inputs consumed"
+        label="parents consumed"
         accent="cyan"
         right={
-          <button type="button" onClick={addInput} className="text-cyan transition hover:text-ink">
-            + add input
+          <button type="button" onClick={addParent} className="text-cyan transition hover:text-ink">
+            + add parent
           </button>
         }
       >
-        {form.inputs.length === 0 && (
-          <p className="prose-sans text-sm text-faint">No inputs (a raw-material attestation may have none).</p>
+        {form.parents.length === 0 && (
+          <p className="prose-sans text-sm text-faint">No parents (a raw_material_supply attestation has none).</p>
         )}
-        <div className="space-y-3">
-          {form.inputs.map((inp, idx) => (
-            <div key={idx} className="flex items-end gap-3">
-              <div className="flex-1">
-                <Field label={`Input #${idx + 1} — attestation hash`} hint="lowercase hex">
-                  <input className={inputClass + " font-mono"} value={inp.attestation_hash} onChange={(e) => updateInput(idx, "attestation_hash", e.target.value)} placeholder="a1b2c3…" />
+        <div className="space-y-4">
+          {form.parents.map((p, idx) => (
+            <div key={idx} className="border border-line bg-base/40 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[11px] uppercase tracking-[0.12em] text-faint">Parent #{idx + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => removeParent(idx)}
+                  className="border border-alarm/40 bg-alarm/10 px-2.5 py-1 text-xs font-medium uppercase tracking-[0.1em] text-alarm transition hover:bg-alarm/20"
+                >
+                  remove
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="Attestation ID">
+                  <input className={inputClass + " font-mono"} value={p.attestation_id} onChange={(e) => updateParent(idx, "attestation_id", e.target.value)} placeholder="att-…" />
+                </Field>
+                <Field label="Content hash" hint="64-char lowercase hex SHA-256">
+                  <input className={inputClass + " font-mono"} value={p.content_hash} onChange={(e) => updateParent(idx, "content_hash", e.target.value)} placeholder="1ed6d6cc…" />
+                </Field>
+                <Field label="Quantity consumed" hint="number">
+                  <input className={inputClass} value={p.quantity_consumed} onChange={(e) => updateParent(idx, "quantity_consumed", e.target.value)} inputMode="decimal" />
+                </Field>
+                <Field label="Unit" hint="must equal the parent's output.unit">
+                  <input className={inputClass} value={p.unit} onChange={(e) => updateParent(idx, "unit", e.target.value)} placeholder="m2" />
                 </Field>
               </div>
-              <div className="w-32">
-                <Field label="Qty used" hint="integer">
-                  <input className={inputClass} value={inp.quantity_used} onChange={(e) => updateInput(idx, "quantity_used", e.target.value)} inputMode="numeric" />
-                </Field>
-              </div>
-              <button
-                type="button"
-                onClick={() => removeInput(idx)}
-                className="mb-1 border border-alarm/40 bg-alarm/10 px-3 py-2 text-sm font-medium uppercase tracking-[0.1em] text-alarm transition hover:bg-alarm/20"
-              >
-                remove
-              </button>
             </div>
           ))}
         </div>
@@ -496,13 +581,13 @@ function FormStep(props) {
 
       <Panel label="signing key" accent="cyan">
         <p className="prose-sans text-sm text-dim">
-          A fresh Ed25519 keypair is generated in your browser. You may paste a 32-byte (64 hex char)
-          private key instead.
+          A fresh Ed25519 keypair is generated in your browser. You may paste a 32-byte private key
+          (64 hex chars or base64) instead — the kit ships base64 seeds.
         </p>
         <dl className="mt-3 space-y-1 text-xs">
           <div className="break-all">
-            <span className="font-medium uppercase tracking-[0.1em] text-faint">public key (hex): </span>
-            <code className="text-signal/90">{keypair?.publicHex}</code>
+            <span className="font-medium uppercase tracking-[0.1em] text-faint">public key (base64): </span>
+            <code className="text-signal/90">{keypair?.publicB64}</code>
           </div>
         </dl>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -510,7 +595,7 @@ function FormStep(props) {
             className={inputClass + " font-mono"}
             value={privInput}
             onChange={(e) => setPrivInput(e.target.value)}
-            placeholder="paste 64-hex-char private key (optional)"
+            placeholder="paste private key — 64 hex chars or base64 (optional)"
           />
           <button type="button" onClick={applyPastedKey} disabled={!privInput.trim()} className={BTN_CYAN}>
             use key
@@ -523,7 +608,7 @@ function FormStep(props) {
       </Panel>
 
       <Panel label="live preview" accent="cyan" right="what gets signed">
-        <p className="mb-1 text-[11px] uppercase tracking-[0.1em] text-faint">Assembled payload</p>
+        <p className="mb-1 text-[11px] uppercase tracking-[0.1em] text-faint">Assembled payload (signature excluded)</p>
         <pre className="mb-4 overflow-x-auto border border-line bg-base p-3 text-xs text-ink">
 {JSON.stringify(payload, null, 2)}
         </pre>
@@ -533,6 +618,12 @@ function FormStep(props) {
         <pre className="overflow-x-auto border border-line bg-base p-3 text-xs text-signal/90">
 {canonical}
         </pre>
+        {hashPreview && (
+          <div className="mt-3 break-all text-xs">
+            <span className="font-medium uppercase tracking-[0.1em] text-faint">content_hash (children reference this): </span>
+            <code className="text-signal/90">{hashPreview}</code>
+          </div>
+        )}
       </Panel>
 
       {!validation.valid && (
@@ -554,7 +645,7 @@ function FormStep(props) {
   );
 }
 
-function ConfirmStep({ payload, canonical, keypair, submitState, onBack, onConfirm }) {
+function ConfirmStep({ payload, canonical, hashPreview, keypair, submitState, onBack, onConfirm }) {
   const busy = submitState.status === "signing" || submitState.status === "submitting";
   return (
     <div className="space-y-6">
@@ -566,7 +657,7 @@ function ConfirmStep({ payload, canonical, keypair, submitState, onBack, onConfi
       </Panel>
 
       <Panel label="payload" accent="cyan">
-        <p className="mb-1 text-[11px] uppercase tracking-[0.1em] text-faint">Payload</p>
+        <p className="mb-1 text-[11px] uppercase tracking-[0.1em] text-faint">Payload (signature excluded)</p>
         <pre className="mb-4 overflow-x-auto border border-line bg-base p-3 text-xs text-ink">
 {JSON.stringify(payload, null, 2)}
         </pre>
@@ -574,8 +665,13 @@ function ConfirmStep({ payload, canonical, keypair, submitState, onBack, onConfi
         <pre className="mb-4 overflow-x-auto border border-line bg-base p-3 text-xs text-signal/90">
 {canonical}
         </pre>
+        {hashPreview && (
+          <p className="mb-3 break-all text-xs text-dim">
+            content_hash <code className="text-signal/90">{hashPreview}</code>
+          </p>
+        )}
         <p className="text-xs text-dim">
-          Signing with public key <code className="break-all text-signal/90">{keypair?.publicHex}</code>
+          Signing with public key <code className="break-all text-signal/90">{keypair?.publicB64}</code>
         </p>
       </Panel>
 
@@ -611,33 +707,48 @@ function DoneStep({ result, onReset }) {
   }
 
   const submitted = !result.backendError;
+  const verdict = result.backendResult;
   return (
     <div className="space-y-6">
       <Panel
         label={submitted ? "attestation issued" : "signed locally"}
         accent={submitted ? "signal" : "amber"}
-        right={submitted ? "accepted" : "backend unreachable"}
+        right={submitted ? "verified by backend" : "backend unreachable"}
       >
         {submitted ? (
           <div className="seal-in">
             <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-signal">
-              <span className="blink">●</span> accepted by verifier
+              <span className="blink">●</span> signed &amp; submitted to /verify
             </div>
             <p className="mt-3 text-[11px] uppercase tracking-[0.12em] text-faint">content hash</p>
             <code className="mt-1 block break-all border border-signal/30 bg-base px-3 py-2 text-sm text-signal/90 glow-signal">
               {result.hash}
             </code>
+            {verdict && (
+              <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                <dt className="text-faint">designation</dt>
+                <dd className="text-ink">{verdict.designation}</dd>
+                <dt className="text-faint">canadian content</dt>
+                <dd className="text-ink">{verdict.canadian_content_percentage}%</dd>
+                <dt className="text-faint">chain valid</dt>
+                <dd className={verdict.chain_valid ? "text-signal" : "text-alarm"}>
+                  {String(verdict.chain_valid)}
+                </dd>
+                <dt className="text-faint">anomalies</dt>
+                <dd className="text-ink">{(verdict.anomalies || []).length}</dd>
+              </dl>
+            )}
           </div>
         ) : (
           <p className="prose-sans text-sm text-amber/90">
-            The payload was signed and verified locally, but the POST to the backend failed:{" "}
+            The attestation was signed and verified locally, but the POST to the backend failed:{" "}
             <span className="font-mono text-amber">{result.backendError}</span>. The signed body
             below is valid and ready to submit once the backend is reachable.
           </p>
         )}
       </Panel>
 
-      <Panel label="signed body" accent="cyan" right="posted to /attestations">
+      <Panel label="signed body" accent="cyan" right="signature: { algorithm, value }">
         <p className="text-sm text-dim">
           Local signature verification:{" "}
           <span className={result.verified ? "font-semibold text-signal" : "font-semibold text-alarm"}>

@@ -1,20 +1,25 @@
-import { designationInfo, formatCents, formatPct } from "../labels.js";
+import { designationInfo, formatCad, formatPct } from "../labels.js";
 import Panel from "./ui/Panel.jsx";
 import Readout from "./ui/Readout.jsx";
 import HashStrip from "./ui/HashStrip.jsx";
 import CostBreakdown from "./CostBreakdown.jsx";
 import AnomalyList from "./AnomalyList.jsx";
 
-// The headline verdict, rendered as an instrument readout: a latched status
-// line, the Canadian-content figure as the hero metric, a telemetry summary,
-// cost attribution, integrity log, and the root hash as a machine-readable zone.
-export default function VerdictCard({ result, rootHash }) {
+// The headline verdict, rendered as an instrument readout. Driven off the REAL
+// /verify response:
+//   { designation, canadian_content_percentage, chain_valid, anomalies[] }
+// plus a locally-derived cost attribution (the response carries no cost detail).
+export default function VerdictCard({ result, cost, productId }) {
   const info = designationInfo(result.designation);
   const pass = info.pass;
-  const hasHardFailure = (result.anomalies || []).some((a) => !a.advisory);
-  const conflicted = pass && hasHardFailure; // pass label + integrity failure
+  const chainValid = result.chain_valid !== false;
+  // "Conflicted": a passing designation alongside an invalid chain.
+  const conflicted = pass && !chainValid;
   const tone = pass ? "signal" : "alarm";
   const anomalyCount = (result.anomalies || []).length;
+  const pct = result.canadian_content_percentage;
+  const total = cost?.totalCad ?? 0;
+  const canadian = cost?.canadianCad ?? 0;
 
   return (
     <Panel
@@ -63,27 +68,28 @@ export default function VerdictCard({ result, rootHash }) {
               pass ? "text-signal glow-signal" : "text-alarm glow-alarm"
             }`}
           >
-            {formatPct(result.canadian_pct)}
+            {formatPct(pct)}
           </div>
           <div className="mt-2 text-xs text-dim">
-            {formatCents(result.canadian_cost_cents)} CA / {formatCents(result.total_cost_cents)} total
+            {formatCad(canadian)} CA / {formatCad(total)} total
           </div>
         </div>
 
         {/* telemetry summary */}
         <div className="space-y-1.5">
           <Readout label="designation" value={result.designation} tone={tone} glow />
+          <Readout label="canadian content" value={formatPct(pct)} tone={tone} />
           <Readout
-            label="canadian content"
-            value={formatPct(result.canadian_pct)}
-            tone={tone}
+            label="chain integrity"
+            value={chainValid ? "valid" : "invalid"}
+            tone={chainValid ? "signal" : "alarm"}
           />
-          <Readout label="ca cost" value={formatCents(result.canadian_cost_cents)} tone="signal" />
-          <Readout label="total cost" value={formatCents(result.total_cost_cents)} tone="ink" />
+          <Readout label="ca cost" value={formatCad(canadian)} tone="signal" />
+          <Readout label="total cost" value={formatCad(total)} tone="ink" />
           <Readout
             label="anomalies"
             value={anomalyCount === 0 ? "0 · clean" : String(anomalyCount)}
-            tone={anomalyCount === 0 ? "signal" : hasHardFailure ? "alarm" : "amber"}
+            tone={anomalyCount === 0 ? "signal" : "alarm"}
           />
         </div>
 
@@ -91,10 +97,7 @@ export default function VerdictCard({ result, rootHash }) {
           <h3 className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-cyan">
             Cost origin
           </h3>
-          <CostBreakdown
-            costByCountry={result.cost_by_country}
-            totalCents={result.total_cost_cents}
-          />
+          <CostBreakdown byCountry={cost?.byCountry} totalCad={total} />
         </section>
 
         <section>
@@ -105,7 +108,7 @@ export default function VerdictCard({ result, rootHash }) {
         </section>
       </div>
 
-      {rootHash && <HashStrip hash={rootHash} label="root" />}
+      {productId && <HashStrip hash={productId} label="product" />}
     </Panel>
   );
 }
