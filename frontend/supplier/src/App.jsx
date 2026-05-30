@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { canonicalize } from "./lib/canonical.js";
 import { validatePayload } from "./lib/validate.js";
 import {
@@ -12,32 +12,23 @@ import {
 import { submitAttestation, BACKEND_URL } from "./lib/api.js";
 import { runCanonicalSelfTest } from "./lib/canonical.test.js";
 import { DEMO_IDENTITIES } from "./devIdentities.js";
+import {
+  ACTION_TYPES,
+  STEP_TYPE_LABEL,
+  SUBSTANTIAL_TRANSFORM_HOURS,
+  buildPayload,
+  defaultForm,
+  emptyParent,
+} from "./attestationForm.js";
 import Panel from "./components/ui/Panel.jsx";
 import Shell from "./components/ui/Shell.jsx";
 import AttestationShare from "./components/AttestationShare.jsx";
+import SupplierDashboard from "./screens/SupplierDashboard.jsx";
 
 // Steps of the supplier flow.
 const STEP_FORM = "form";
 const STEP_CONFIRM = "confirm";
 const STEP_DONE = "done";
-
-const ACTION_TYPES = [
-  "raw_material_supply",
-  "component_manufacture",
-  "subassembly",
-  "final_integration",
-];
-
-// Step-type pill copy — a short label for each schema action_type.
-const STEP_TYPE_LABEL = {
-  raw_material_supply: "SOURCE",
-  component_manufacture: "TRANSFORM",
-  subassembly: "ASSEMBLE",
-  final_integration: "INTEGRATE",
-};
-
-// Labour hours at or above this imply a substantial transformation (advisory).
-const SUBSTANTIAL_TRANSFORM_HOURS = 4;
 
 // Shared control-surface styles (Maple Ledger light).
 const BTN_CYAN =
@@ -49,86 +40,6 @@ const BTN_GHOST =
 
 const inputClass =
   "mt-1 w-full rounded-btn border border-line-2 bg-paper px-3 py-2 text-sm text-ink placeholder:text-ink-3 focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy/30";
-
-// A random att- UUID v4 for a fresh attestation id.
-function newAttestationId() {
-  const uuid =
-    typeof crypto !== "undefined" && crypto.randomUUID
-      ? crypto.randomUUID()
-      : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-          const r = (Math.random() * 16) | 0;
-          const v = c === "x" ? r : (r & 0x3) | 0x8;
-          return v.toString(16);
-        });
-  return `att-${uuid}`;
-}
-
-function emptyParent() {
-  return { attestation_id: "", content_hash: "", quantity_consumed: "1", unit: "units" };
-}
-
-// Default form values matching the worked-example parachute component.
-function defaultForm() {
-  return {
-    attestation_id: newAttestationId(),
-    version: "1.0",
-    supplier_id: "sup-avss-corp",
-    timestamp: "2026-03-21T14:30:00Z",
-    action_type: "component_manufacture",
-    performed_in_country: "CA",
-    parents: [
-      {
-        attestation_id: "att-anchor-0001",
-        content_hash: "1ed6d6cc7b1526c7473ad8532a6f8ae5e17470bc09434f5da51e9d33c2cddaa4",
-        quantity_consumed: "8",
-        unit: "m2",
-      },
-    ],
-    output_name: "Parachute Recovery Assembly",
-    output_quantity: "1",
-    output_unit: "units",
-    material_cad: "0",
-    labour_hours: "6.5",
-    labour_cost_cad: "520",
-  };
-}
-
-// Build the signed-attestation object from raw form strings. Numbers are coerced
-// to JS numbers; anything that isn't a finite number is left as the raw value so
-// validation reports it.
-function buildPayload(form) {
-  const toNum = (v) => {
-    const t = String(v).trim();
-    if (t === "") return v; // keep raw -> validation fails
-    const n = Number(t);
-    return Number.isFinite(n) ? n : v;
-  };
-
-  return {
-    attestation_id: form.attestation_id.trim(),
-    version: form.version.trim(),
-    supplier_id: form.supplier_id.trim(),
-    timestamp: form.timestamp.trim(),
-    action_type: form.action_type,
-    performed_in_country: form.performed_in_country.trim().toUpperCase(),
-    parents: form.parents.map((p) => ({
-      attestation_id: p.attestation_id.trim(),
-      content_hash: p.content_hash.trim().toLowerCase(),
-      quantity_consumed: toNum(p.quantity_consumed),
-      unit: p.unit.trim(),
-    })),
-    output: {
-      name: form.output_name.trim(),
-      quantity_produced: toNum(form.output_quantity),
-      unit: form.output_unit.trim(),
-    },
-    costs: {
-      material_cad: toNum(form.material_cad),
-      labour_hours: toNum(form.labour_hours),
-      labour_cost_cad: toNum(form.labour_cost_cad),
-    },
-  };
-}
 
 function Field({ label, hint, children }) {
   return (
@@ -143,6 +54,9 @@ function Field({ label, hint, children }) {
 }
 
 export default function App() {
+  const [view, setView] = useState(() =>
+    window.location.hash === "#create-attestation" ? "create" : "dashboard"
+  );
   const [step, setStep] = useState(STEP_FORM);
   const [form, setForm] = useState(defaultForm);
   const [keypair, setKeypair] = useState(generateKeypair);
@@ -159,6 +73,14 @@ export default function App() {
     }
     return r;
   });
+
+  useEffect(() => {
+    function onHashChange() {
+      setView(window.location.hash === "#create-attestation" ? "create" : "dashboard");
+    }
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
 
   const payload = useMemo(() => buildPayload(form), [form]);
   const validation = useMemo(() => validatePayload(payload), [payload]);
@@ -283,66 +205,136 @@ export default function App() {
     setStep(STEP_FORM);
   }
 
-  const STEP_LABEL = { form: "1 · author", confirm: "2 · confirm", done: "3 · issued" };
+  function openCreate() {
+    window.location.hash = "create-attestation";
+    setView("create");
+  }
 
   return (
     <Shell
       active="supplier"
-      context="supplier · attestation signer"
+      context={view === "create" ? "Create Attestation" : "Dashboard"}
+      subtitle={view === "create" ? "Create & sign attestations" : "Supplier provenance operations"}
+      activeNav={view === "create" ? "Create Attestation" : "Dashboard"}
       backend={BACKEND_URL.replace(/^https?:\/\//, "")}
     >
-      <div className="mx-auto w-full max-w-3xl px-6 pt-6">
-        <div className="flex items-center gap-4 font-mono text-[11px] uppercase tracking-wider text-ink-3">
-          {Object.entries(STEP_LABEL).map(([k, v]) => (
-            <span key={k} className={step === k ? "text-navy" : ""}>
-              {step === k ? "▸ " : ""}
-              {v}
-            </span>
-          ))}
-        </div>
-      </div>
+      {view === "dashboard" && <SupplierDashboard onCreate={openCreate} />}
 
-      <main className="mx-auto w-full max-w-3xl px-6 py-8">
-        {step === STEP_FORM && (
-          <div className="space-y-6">
-            <SigningAs supplierId={form.supplier_id} keypair={keypair} />
-            <IdentityLoader onLoadIdentity={loadDemoIdentity} />
-            <FormStep
-              form={form}
-              payload={payload}
-              validation={validation}
-              canonical={canonical}
-              hashPreview={hashPreview}
-              keypair={keypair}
-              privInput={privInput}
-              setPrivInput={setPrivInput}
-              keyError={keyError}
-              applyPastedKey={applyPastedKey}
-              regenerateKey={regenerateKey}
-              update={update}
-              updateParent={updateParent}
-              addParent={addParent}
-              removeParent={removeParent}
-              onContinue={goConfirm}
-            />
+      {view === "create" && (
+        <>
+          <div className="mx-auto w-full max-w-4xl px-6 pt-6">
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h1 className="text-2xl font-bold text-navy">Create Attestation</h1>
+                <p className="mt-1 text-sm text-ink-2">
+                  Build a signed provenance record with parent inputs, costs, location, and hash evidence.
+                </p>
+              </div>
+              <span className="rounded-chip bg-tint-navy px-2.5 py-1 font-mono text-[11px] font-semibold uppercase tracking-wider text-navy">
+                browser signing
+              </span>
+            </div>
+            <WizardStepper step={step} />
           </div>
-        )}
 
-        {step === STEP_CONFIRM && (
-          <ConfirmStep
-            payload={payload}
-            canonical={canonical}
-            hashPreview={hashPreview}
-            keypair={keypair}
-            submitState={submitState}
-            onBack={() => setStep(STEP_FORM)}
-            onConfirm={signAndSubmit}
-          />
-        )}
+          <main className="mx-auto w-full max-w-4xl px-6 py-6">
+            {step === STEP_FORM && (
+              <div className="space-y-6">
+                <SigningAs supplierId={form.supplier_id} keypair={keypair} />
+                <IdentityLoader onLoadIdentity={loadDemoIdentity} />
+                <FormStep
+                  form={form}
+                  payload={payload}
+                  validation={validation}
+                  canonical={canonical}
+                  hashPreview={hashPreview}
+                  keypair={keypair}
+                  privInput={privInput}
+                  setPrivInput={setPrivInput}
+                  keyError={keyError}
+                  applyPastedKey={applyPastedKey}
+                  regenerateKey={regenerateKey}
+                  update={update}
+                  updateParent={updateParent}
+                  addParent={addParent}
+                  removeParent={removeParent}
+                  onContinue={goConfirm}
+                />
+              </div>
+            )}
 
-        {step === STEP_DONE && <DoneStep result={result} onReset={resetAll} />}
-      </main>
+            {step === STEP_CONFIRM && (
+              <ConfirmStep
+                payload={payload}
+                canonical={canonical}
+                hashPreview={hashPreview}
+                keypair={keypair}
+                submitState={submitState}
+                onBack={() => setStep(STEP_FORM)}
+                onConfirm={signAndSubmit}
+              />
+            )}
+
+            {step === STEP_DONE && <DoneStep result={result} onReset={resetAll} />}
+          </main>
+        </>
+      )}
     </Shell>
+  );
+}
+
+function WizardStepper({ step }) {
+  const activeIndex = step === STEP_DONE ? 5 : step === STEP_CONFIRM ? 5 : 0;
+  const labels = [
+    "Product / Output",
+    "Action Type",
+    "Location",
+    "Parent Inputs",
+    "Costs",
+    "Review & Sign",
+  ];
+
+  return (
+    <div className="rounded-card border border-line bg-paper px-5 py-4">
+      <div className="grid grid-cols-6 items-start gap-2">
+        {labels.map((label, idx) => {
+          const done = step === STEP_DONE || idx < activeIndex;
+          const active = idx === activeIndex && step !== STEP_DONE;
+          return (
+            <div key={label} className="relative text-center">
+              {idx > 0 && (
+                <span
+                  className={
+                    "absolute left-[-50%] top-3 h-px w-full " + (done ? "bg-ok" : "bg-line-2")
+                  }
+                  aria-hidden
+                />
+              )}
+              <span
+                className={
+                  "relative z-10 mx-auto flex h-6 w-6 items-center justify-center rounded-full border text-[11px] font-bold " +
+                  (done
+                    ? "border-ok bg-ok text-paper"
+                    : active
+                    ? "border-navy bg-tint-navy text-navy"
+                    : "border-line-2 bg-paper text-ink-3")
+                }
+              >
+                {idx + 1}
+              </span>
+              <div
+                className={
+                  "mt-2 text-[10px] font-semibold leading-tight " +
+                  (active ? "text-navy" : done ? "text-ok" : "text-ink-3")
+                }
+              >
+                {label}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

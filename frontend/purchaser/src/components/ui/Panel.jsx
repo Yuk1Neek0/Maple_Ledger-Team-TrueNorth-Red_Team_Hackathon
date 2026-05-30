@@ -47,7 +47,7 @@ export default function Panel({
 }
 
 // A small status node: ● LABEL.
-export function StatusNode({ tone = "ok", label, blink = false }) {
+export function StatusNode({ tone = "ok", label }) {
   const dot = {
     ok: "bg-ok",
     signal: "bg-ok",

@@ -8,29 +8,29 @@ const SUPPLIER = "http://localhost:5174";
 
 test.describe("Purchaser — verify origin", () => {
   test("worked example verifies as Made in Canada / intact", async ({ page }) => {
-    await page.goto(PURCHASER);
+    await page.goto(`${PURCHASER}/#verify-product`);
     await expect(page.getByRole("heading", { name: "Verify origin" })).toBeVisible();
 
     await page.getByRole("button", { name: /load worked example/i }).click();
 
     // Real /verify round-trip → headline verdict.
     await expect(page.getByText("Made in Canada", { exact: true })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText("intact", { exact: true })).toBeVisible();
+    await expect(page.getByText("Valid", { exact: true }).first()).toBeVisible();
     await expect(page.getByText(/58\.4\s*%/)).toBeVisible();
   });
 
   test("tampered example is flagged: Not Qualified / compromised + parent_hash_mismatch", async ({ page }) => {
-    await page.goto(PURCHASER);
+    await page.goto(`${PURCHASER}/#verify-product`);
     await page.getByRole("button", { name: /load tampered example/i }).click();
 
     await expect(page.getByText("Not Qualified", { exact: true })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText("compromised", { exact: true })).toBeVisible();
+    await expect(page.getByText("Invalid", { exact: true }).first()).toBeVisible();
     // The anomaly list humanizes the type: parent_hash_mismatch → "Parent hash mismatch".
     await expect(page.getByText(/parent hash mismatch/i).first()).toBeVisible();
   });
 
   test("paste-chain JSON path verifies", async ({ page }) => {
-    await page.goto(PURCHASER);
+    await page.goto(`${PURCHASER}/#verify-product`);
     const chain = JSON.stringify({
       product_attestation_id: "att-anchor-0001",
       attestations: [
@@ -55,13 +55,15 @@ test.describe("Purchaser — verify origin", () => {
     await page.locator("#ml-chain-json").fill(chain);
     await page.getByRole("button", { name: "verify", exact: true }).click();
     // A single FR raw-material node → Not Qualified, but it should render a verdict.
-    await expect(page.getByText("designation", { exact: true }).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText("Designation", { exact: true }).first()).toBeVisible({ timeout: 15000 });
   });
 });
 
 test.describe("Supplier — author & sign", () => {
   test("default form signs and issues an attestation with QR + download", async ({ page }) => {
     await page.goto(SUPPLIER);
+    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+    await page.getByRole("button", { name: /create attestation/i }).click();
 
     // Step 1: form is pre-filled with the parachute component example → review.
     await page.getByRole("button", { name: /review .*sign/i }).click();

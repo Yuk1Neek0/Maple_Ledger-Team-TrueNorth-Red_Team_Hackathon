@@ -7,11 +7,6 @@
 // attribution locally, purely for display. The legal verdict still comes from
 // the backend.
 
-import workedExampleChain from "./worked_example_chain.json";
-import tamperedExampleChain from "./tampered_example_chain.json";
-
-export { workedExampleChain, tamperedExampleChain };
-
 // Real action_type -> short display label for graph nodes.
 const ACTION_LABEL = {
   raw_material_supply: "raw material",
@@ -49,6 +44,8 @@ export function buildGraph(attestations, anomalies, productId) {
     const isProduct = a.attestation_id === productId;
     const action = ACTION_LABEL[a.action_type] || a.action_type || "";
     const name = a.output?.name || a.attestation_id;
+    const c = a.costs || {};
+    const directCostCad = (Number(c.material_cad) || 0) + (Number(c.labour_cost_cad) || 0);
     return {
       id: a.attestation_id,
       // Two-line label kept for backwards-compat; the React Flow node renders
@@ -61,6 +58,9 @@ export function buildGraph(attestations, anomalies, productId) {
       action_type: a.action_type,
       action_label: action,
       is_product: isProduct,
+      direct_cost_cad: directCostCad,
+      quantity: a.output?.quantity_produced,
+      unit: a.output?.unit,
     };
   });
 
@@ -71,7 +71,12 @@ export function buildGraph(attestations, anomalies, productId) {
       // Only draw edges to parents that are actually in the submitted chain;
       // a dangling parent shows up as the anomaly instead of a phantom node.
       if (present.has(p.attestation_id)) {
-        edges.push({ source: p.attestation_id, target: a.attestation_id });
+        edges.push({
+          source: p.attestation_id,
+          target: a.attestation_id,
+          quantity_consumed: p.quantity_consumed,
+          unit: p.unit,
+        });
       }
     }
   }
@@ -155,7 +160,7 @@ export function parseChainInput(text) {
   try {
     data = JSON.parse(text);
   } catch (e) {
-    throw new Error(`Not valid JSON: ${e.message}`);
+    throw new Error(`Not valid JSON: ${e.message}`, { cause: e });
   }
 
   // Full request envelope.

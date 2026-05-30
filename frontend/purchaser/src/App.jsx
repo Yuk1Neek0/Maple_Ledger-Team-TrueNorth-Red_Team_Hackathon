@@ -1,22 +1,13 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import { verifyChain } from "./api.js";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { createVerification, buildVerificationView } from "./services/verification.js";
 import { BACKEND_URL } from "./config.js";
-import {
-  buildGraph,
-  costAttribution,
-  criticality,
-  parseChainInput,
-  workedExampleChain,
-  tamperedExampleChain,
-} from "./chain.js";
-import VerdictCard from "./components/VerdictCard.jsx";
-import ProvenanceGraph from "./components/ProvenanceGraph.jsx";
-import QrScanner from "./components/QrScanner.jsx";
 import Panel from "./components/ui/Panel.jsx";
 import { StatusNode } from "./components/ui/Readout.jsx";
 import BootSequence from "./components/ui/BootSequence.jsx";
 import Shell from "./components/ui/Shell.jsx";
-import { countryName, formatCad, formatPct } from "./labels.js";
+import PurchaserDashboard from "./screens/PurchaserDashboard.jsx";
+import VerifyHero from "./screens/VerifyHero.jsx";
+import VerificationResult from "./screens/VerificationResult.jsx";
 
 // Shared control surface button styles (Maple Ledger light).
 const BTN_PRIMARY =
@@ -32,35 +23,48 @@ const BTN_GHOST =
 // / anomalies. Topology and cost-by-country are derived locally from the chain
 // we submitted (the request); the legal verdict comes from the backend.
 export default function App() {
+  const [view, setView] = useState(() =>
+    window.location.hash === "#verify-product" ? "verify" : "dashboard"
+  );
   const [chain, setChain] = useState(null); // the submitted { product_attestation_id, attestations }
   const [result, setResult] = useState(null); // the real /verify response
+  const [verification, setVerification] = useState(null); // normalized product-style view model
   const [status, setStatus] = useState("idle"); // idle | loading | done | error
   const [error, setError] = useState(null);
-  const [showDetail, setShowDetail] = useState(false);
   const [showManual, setShowManual] = useState(false);
 
   // Derived view models — recomputed only when the verified chain/result change.
   const graph = useMemo(
-    () =>
-      chain && result
-        ? buildGraph(chain.attestations, result.anomalies, chain.product_attestation_id)
-        : null,
-    [chain, result]
+    () => verification?.graph || buildVerificationView(chain, result).graph,
+    [chain, result, verification]
   );
   const cost = useMemo(
-    () => (chain ? costAttribution(chain.attestations) : null),
-    [chain]
+    () => verification?.cost || buildVerificationView(chain, result).cost,
+    [chain, result, verification]
   );
-  const crit = useMemo(() => (chain ? criticality(chain.attestations) : null), [chain]);
+  const crit = useMemo(
+    () => verification?.criticality || buildVerificationView(chain, result).criticality,
+    [chain, result, verification]
+  );
+
+  useEffect(() => {
+    function onHashChange() {
+      setView(window.location.hash === "#verify-product" ? "verify" : "dashboard");
+    }
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
 
   const runVerify = useCallback(async (loaded) => {
     setChain(loaded);
     setResult(null);
+    setVerification(null);
     setError(null);
     setStatus("loading");
     try {
-      const res = await verifyChain(loaded);
-      setResult(res);
+      const next = await createVerification(loaded);
+      setVerification(next);
+      setResult(next.result);
       setStatus("done");
     } catch (err) {
       setError(err.message || String(err));
@@ -71,15 +75,31 @@ export default function App() {
   const reset = useCallback(() => {
     setChain(null);
     setResult(null);
+    setVerification(null);
     setStatus("idle");
     setError(null);
-    setShowDetail(false);
   }, []);
+
+  const openVerify = useCallback(() => {
+    window.location.hash = "verify-product";
+    setView("verify");
+  }, []);
+
+  const backToDashboard = useCallback(() => {
+    reset();
+    window.location.hash = "";
+    setView("dashboard");
+  }, [reset]);
+
+  const inVerifyFlow = view === "verify" || status !== "idle";
 
   return (
     <Shell
       active="purchaser"
-      context="purchaser · verify origin"
+      context={inVerifyFlow ? "Verify Product" : "Dashboard"}
+      subtitle={inVerifyFlow ? "Run a live provenance verification" : "Provenance, Canadian content & anomalies"}
+      activeNav={inVerifyFlow ? "Verify Product" : "Dashboard"}
+      dense={status === "done"}
       backend={BACKEND_URL.replace(/^https?:\/\//, "")}
     >
       <main className="mx-auto w-full max-w-6xl px-4 py-6">
@@ -93,7 +113,26 @@ export default function App() {
           />
         </div>
 
-        {status === "idle" && <VerifyHero onVerify={runVerify} />}
+        {status === "idle" && view === "dashboard" && (
+          <PurchaserDashboard onVerifyProduct={openVerify} />
+        )}
+
+        {status === "idle" && view === "verify" && (
+          <div>
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h1 className="text-2xl font-bold text-navy">Verify Product</h1>
+                <p className="mt-1 text-sm text-ink-2">
+                  Scan a QR code, upload JSON, or load a demo chain. This page calls the live POST /verify backend.
+                </p>
+              </div>
+              <button type="button" onClick={backToDashboard} className={BTN_GHOST}>
+                back to dashboard
+              </button>
+            </div>
+            <VerifyHero onVerify={runVerify} />
+          </div>
+        )}
 
         {status === "loading" && (
           <div className="mx-auto max-w-xl">
@@ -116,161 +155,24 @@ export default function App() {
         )}
 
         {status === "done" && result && (
-          <div className="space-y-6">
-            <div className="grid gap-6 lg:grid-cols-2">
-              <VerdictCard
-                result={result}
-                cost={cost}
-                productId={chain?.product_attestation_id}
-              />
-              {graph && <ProvenanceGraph graph={graph} />}
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <button type="button" onClick={() => setShowDetail(true)} className={BTN_PRIMARY}>
-                ▸ calculation detail
-              </button>
-              <button type="button" onClick={reset} className={BTN_GHOST}>
-                ↻ verify another product
-              </button>
-            </div>
-
-            {crit && <CriticalityPanel nodes={crit} />}
-
-            {showDetail && (
-              <CostDetailModal
-                result={result}
-                cost={cost}
-                onClose={() => setShowDetail(false)}
-              />
-            )}
-          </div>
+          <VerificationResult
+            result={result}
+            chain={chain}
+            graph={graph}
+            cost={cost}
+            criticality={crit}
+            onBack={backToDashboard}
+            onVerifyAnother={() => {
+              reset();
+              setView("verify");
+              window.location.hash = "verify-product";
+            }}
+          />
         )}
       </main>
 
       {showManual && <Manual onClose={() => setShowManual(false)} />}
     </Shell>
-  );
-}
-
-// VerifyHero: the buyer's entry point — scan a QR or paste a hash / chain JSON,
-// or load the worked example. The real backend verifies a whole chain in one
-// POST, so a scanned/pasted value is parsed into a chain before submitting.
-function VerifyHero({ onVerify }) {
-  const [text, setText] = useState("");
-  const [err, setErr] = useState("");
-  const fileRef = useRef(null);
-
-  function tryVerify(raw) {
-    setErr("");
-    try {
-      onVerify(parseChainInput(raw));
-    } catch (e) {
-      setErr(e.message);
-    }
-  }
-
-  function onFile(e) {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-selecting the same file
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setText(String(reader.result || ""));
-      tryVerify(String(reader.result || ""));
-    };
-    reader.onerror = () => setErr("Could not read that file.");
-    reader.readAsText(file);
-  }
-
-  return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-navy">Verify origin</h1>
-        <p className="mx-auto mt-1 max-w-xl text-sm text-ink-2">
-          Scan a product&apos;s QR or paste its provenance chain. The verifier walks the chain,
-          checks every signature, and returns the Canadian-content designation with any integrity
-          anomalies.
-        </p>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <Panel label="scan qr" accent="navy">
-          <QrScanner onScan={tryVerify} />
-          <p className="mt-3 text-xs text-ink-3">
-            Scans a QR encoding the product&apos;s provenance chain (or a single attestation).
-          </p>
-        </Panel>
-
-        <Panel label="paste hash / chain" accent="navy">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (text.trim()) tryVerify(text);
-            }}
-          >
-            <textarea
-              id="ml-chain-json"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder={`{ "product_attestation_id": "att-…", "attestations": [ … ] }`}
-              className="h-40 w-full resize-y rounded-btn border border-line-2 bg-paper px-3 py-2 font-mono text-xs text-ink placeholder:text-ink-3 focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy/30"
-            />
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <button type="button" onClick={() => fileRef.current?.click()} className={BTN_GHOST}>
-                ⭱ upload JSON
-              </button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="application/json,.json"
-                onChange={onFile}
-                className="hidden"
-              />
-              <button type="submit" disabled={!text.trim()} className={BTN_PRIMARY}>
-                verify
-              </button>
-            </div>
-            <p className="mt-1.5 text-xs text-ink-3">
-              Full envelope, a bare attestations array, or one attestation.
-            </p>
-            {err && (
-              <p className="mt-2 rounded-btn border-l-2 border-red bg-tint-red px-3 py-2 text-sm text-red">
-                {err}
-              </p>
-            )}
-          </form>
-        </Panel>
-      </div>
-
-      <Panel label="demo" accent="navy" right="no QR handy?">
-        <button
-          type="button"
-          onClick={() => onVerify(workedExampleChain)}
-          className={`${BTN_PRIMARY} w-full`}
-        >
-          ▸ load worked example (recovery drone)
-        </button>
-        <p className="mt-1.5 text-xs text-ink-3">
-          12 attestations · expected: <span className="text-navy">made_in_canada</span> · 58.4% · valid
-        </p>
-
-        <div className="my-3 border-t border-line" />
-
-        <button
-          type="button"
-          onClick={() => onVerify(tamperedExampleChain)}
-          className={`${BTN_GHOST} w-full`}
-        >
-          ⚠ load tampered example (upstream cost altered)
-        </button>
-        <p className="mt-1.5 text-xs text-ink-3">
-          Same chain, one upstream parent&apos;s cost changed after signing · expected:{" "}
-          <span className="text-red">parent_hash_mismatch</span> · designation{" "}
-          <span className="text-red">none</span> · invalid
-        </p>
-      </Panel>
-    </div>
   );
 }
 
@@ -580,182 +482,5 @@ function Manual({ onClose }) {
         </div>
       </div>
     </div>
-  );
-}
-
-function CostDetailModal({ result, cost, onClose }) {
-  const total = cost?.totalCad || 0;
-  const byCountry = cost?.byCountry || {};
-  const pctOf = (c) => (total ? Math.round(((c || 0) / total) * 1000) / 10 : 0);
-
-  // Cost-by-country share via conic-gradient (CA = navy, others red/grey shades).
-  const palette = ["#d52b1e", "#b4554e", "#9aa0a6", "#5c6670", "#cdd2d7"];
-  let acc = 0;
-  let other = 0;
-  const slices = Object.entries(byCountry)
-    .sort((a, b) => b[1] - a[1])
-    .map(([country, c]) => {
-      const start = total ? (acc / total) * 360 : 0;
-      acc += c;
-      const end = total ? (acc / total) * 360 : 0;
-      const color = country === "CA" ? "#26374a" : palette[other++ % palette.length];
-      return { country, c, start, end, color };
-    });
-  const gradient =
-    slices.length > 0
-      ? `conic-gradient(${slices.map((s) => `${s.color} ${s.start}deg ${s.end}deg`).join(",")})`
-      : "var(--color-line)";
-
-  const nodes = (cost?.perNode || []).slice().sort((a, b) => (b.cad || 0) - (a.cad || 0));
-  const maxContrib = Math.max(1, ...nodes.map((n) => n.cad || 0));
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div
-        className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-card border border-line-2 bg-paper shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="flex items-center justify-between border-b border-line px-5 py-3">
-          <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-navy">
-            calculation detail
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="rounded-btn border border-line-2 px-2 py-0.5 text-ink-2 transition hover:border-red hover:text-red"
-          >
-            ✕
-          </button>
-        </header>
-
-        <div className="p-5">
-          <p className="text-sm text-ink-2">
-            Each component&apos;s cost (material + labour), attributed to where the work happened.
-            Derived locally from the submitted chain; the headline percentage is the backend&apos;s.
-          </p>
-
-          <div className="mt-4 rounded-btn border border-line-2 bg-paper-2 p-4 text-center">
-            <div className="text-3xl font-semibold tabular-nums text-navy">
-              {formatPct(result.canadian_content_percentage)}
-            </div>
-            <div className="mt-1 text-sm text-ink-2">
-              {formatCad(cost?.canadianCad)} Canadian of {formatCad(total)} total
-            </div>
-            <div className="mt-1 font-mono text-[11px] uppercase tracking-wider text-ink-3">
-              Product of Canada ≥ 98% · Made in Canada ≥ 51% (last transformation in Canada)
-            </div>
-          </div>
-
-          <div className="mt-5 flex items-center gap-5">
-            <div
-              className="h-32 w-32 shrink-0 rounded-full ring-1 ring-line-2"
-              style={{ background: gradient }}
-              role="img"
-              aria-label="Cost by country"
-            />
-            <ul className="space-y-1.5 text-sm">
-              {slices.map((s) => (
-                <li key={s.country} className="flex items-center gap-2">
-                  <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: s.color }} />
-                  <span className="font-medium text-ink">{countryName(s.country)}</span>
-                  <span className="text-ink-2">
-                    {formatCad(s.c)} · {pctOf(s.c)}%
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <h3 className="mt-6 mb-2 font-mono text-[11px] font-medium uppercase tracking-wider text-navy">
-            Per-component contribution
-          </h3>
-          <ul className="space-y-2.5">
-            {nodes.map((n) => {
-              const c = n.cad || 0;
-              const barColor = c === 0
-                ? "var(--color-ink-3)"
-                : n.country === "CA"
-                ? "var(--color-navy)"
-                : "var(--color-ink-3)";
-              return (
-                <li key={n.id}>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-ink">
-                      {n.name}{" "}
-                      <span className="text-xs text-ink-3">· {n.supplier_id} · {n.country}</span>
-                    </span>
-                    <span className="text-ink-2">
-                      {formatCad(c)} · {pctOf(c)}%
-                    </span>
-                  </div>
-                  <div className="mt-1 h-2 w-full overflow-hidden rounded-full border border-line bg-paper-2">
-                    <div
-                      className="h-full"
-                      style={{ width: `${Math.round((c / maxContrib) * 100)}%`, backgroundColor: barColor }}
-                    />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-
-          <p className="mt-5 text-xs text-ink-3">
-            Navy = Canadian cost · grey = imported or zero-cost. These are the verified amounts the
-            verdict was computed from.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CriticalityPanel({ nodes }) {
-  const list = (nodes || []).filter((n) => n.component_class);
-  if (list.length === 0) return null;
-  const order = ["critical", "standard", "commodity"];
-  const tone = {
-    critical: "border-line-2 bg-tint-navy text-navy",
-    standard: "border-line-2 bg-paper-2 text-ink",
-    commodity: "border-line-2 bg-paper-2 text-ink-2",
-  };
-  return (
-    <Panel label="strategic criticality" accent="navy" right="advisory">
-      <p className="text-sm text-ink-2">
-        An advisory lens, separate from the legal verdict. Value-add = labour share of a
-        component&apos;s own cost. A <span className="font-medium text-navy">critical</span>{" "}
-        component made outside Canada is the strategic risk to watch.
-      </p>
-      <p className="mt-1.5 text-[11px] text-ink-3">
-        Derived locally from the submitted chain — not returned or asserted by the verifier.
-      </p>
-      <ul className="mt-3 space-y-2">
-        {order.flatMap((cls) =>
-          list
-            .filter((n) => n.component_class === cls)
-            .map((n) => (
-              <li
-                key={n.id}
-                className={"flex items-center justify-between rounded-btn border px-3 py-2 text-sm " + tone[cls]}
-              >
-                <span className="flex items-center gap-2">
-                  <span>
-                    {n.name}{" "}
-                    <span className="text-xs opacity-70">· {n.supplier_id} · {n.country}</span>
-                  </span>
-                  {cls === "critical" && n.country !== "CA" && (
-                    <span className="rounded-chip bg-tint-red px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red">
-                      ⚠ offshore
-                    </span>
-                  )}
-                </span>
-                <span className="font-mono text-[11px] font-semibold uppercase tracking-wider">
-                  {cls} · {Math.round((n.value_add_pct || 0) * 100)}% value-add
-                </span>
-              </li>
-            ))
-        )}
-      </ul>
-    </Panel>
   );
 }

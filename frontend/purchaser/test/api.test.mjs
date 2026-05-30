@@ -20,6 +20,7 @@ import { fileURLToPath } from "node:url";
 
 import { verifyChain } from "../src/api.js";
 import { BACKEND_URL, verifyUrl } from "../src/config.js";
+import { buildVerificationView, createVerification } from "../src/services/verification.js";
 
 const WORKED_EXAMPLE = fileURLToPath(
   new URL("../src/worked_example_chain.json", import.meta.url)
@@ -89,6 +90,63 @@ test("verifyChain: POSTs to /verify with JSON body and headers", async () => {
   assert.deepEqual(JSON.parse(captured.opts.body), MINIMAL_CHAIN);
   // returns the parsed JSON unchanged.
   assert.equal(result.designation, "made_in_canada");
+});
+
+test("createVerification: wraps /verify result with product-style derived view data", async () => {
+  const chain = {
+    product_attestation_id: "att-final",
+    attestations: [
+      {
+        attestation_id: "att-root",
+        supplier_id: "sup-raw",
+        performed_in_country: "US",
+        action_type: "raw_material_supply",
+        parents: [],
+        output: { name: "Input", quantity_produced: 1, unit: "units" },
+        costs: { material_cad: 40, labour_cost_cad: 0, labour_hours: 0 },
+      },
+      {
+        attestation_id: "att-final",
+        supplier_id: "sup-final",
+        performed_in_country: "CA",
+        action_type: "final_integration",
+        parents: [{ attestation_id: "att-root", content_hash: "x", quantity_consumed: 1, unit: "units" }],
+        output: { name: "Finished", quantity_produced: 1, unit: "units" },
+        costs: { material_cad: 10, labour_cost_cad: 50, labour_hours: 5 },
+      },
+    ],
+  };
+  const verdict = {
+    product_attestation_id: "att-final",
+    canadian_content_percentage: 60,
+    designation: "made_in_canada",
+    chain_valid: true,
+    anomalies: [],
+  };
+
+  const wrapped = await withFetch(
+    async () => jsonResponse(verdict),
+    () => createVerification(chain)
+  );
+
+  assert.equal(wrapped.source, "challenge_verify");
+  assert.equal(wrapped.product_attestation_id, "att-final");
+  assert.deepEqual(wrapped.result, verdict);
+  assert.equal(wrapped.graph.nodes.length, 2);
+  assert.deepEqual(wrapped.graph.edges, [
+    { source: "att-root", target: "att-final", quantity_consumed: 1, unit: "units" },
+  ]);
+  assert.equal(wrapped.cost.totalCad, 100);
+  assert.equal(wrapped.cost.canadianCad, 60);
+  assert.equal(wrapped.criticality.find((n) => n.id === "att-final").component_class, "critical");
+});
+
+test("buildVerificationView: returns empty view for missing inputs", () => {
+  assert.deepEqual(buildVerificationView(null, null), {
+    graph: null,
+    cost: null,
+    criticality: null,
+  });
 });
 
 // ─── verifyChain client-side guard (doc §Client wrappers) ────────────────────

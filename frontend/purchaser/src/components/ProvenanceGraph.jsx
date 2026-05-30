@@ -24,6 +24,7 @@ import Panel from "./ui/Panel.jsx";
 const COLORS = {
   navy: "#26374a",
   red: "#d52b1e",
+  blue: "#2f6fdb",
   grey: "#9aa0a6",
   paper: "#ffffff",
   paper2: "#f4f5f6",
@@ -33,10 +34,10 @@ const COLORS = {
   ink3: "#9aa0a6",
 };
 
-const NODE_W = 200;
-const NODE_H = 72;
-const COL_GAP = 250; // horizontal distance between layers
-const ROW_GAP = 100; // vertical distance between siblings in a layer
+const NODE_W = 230;
+const NODE_H = 90;
+const COL_GAP = 260; // horizontal distance between layers
+const ROW_GAP = 108; // vertical distance between siblings in a layer
 
 // ---- layered DAG layout ---------------------------------------------------
 // Returns a Map<id, {x, y}>. Edge source = input (parent), target = consumer,
@@ -120,7 +121,7 @@ const handleStyle = {
 function ProvenanceNode({ data }) {
   const invalid = data.status === "INVALID";
   const isCA = data.country === "CA";
-  const stripe = invalid ? COLORS.red : isCA ? COLORS.navy : COLORS.grey;
+  const stripe = invalid ? COLORS.red : isCA ? COLORS.navy : COLORS.blue;
   const border = invalid
     ? COLORS.red
     : data.is_product
@@ -172,6 +173,10 @@ function ProvenanceNode({ data }) {
             <span className="ml-auto shrink-0 font-semibold text-red">✕ flagged</span>
           )}
         </div>
+        <div className="mt-1 flex items-center justify-between gap-2 font-mono text-[9px] text-ink-3">
+          <span>{data.quantity ?? "?"} {data.unit || ""}</span>
+          <span>${Math.round(data.direct_cost_cad || 0).toLocaleString()} CAD</span>
+        </div>
       </div>
       <Handle type="source" position={Position.Right} style={handleStyle} />
     </div>
@@ -180,7 +185,7 @@ function ProvenanceNode({ data }) {
 
 const nodeTypes = { provenance: ProvenanceNode };
 
-export default function ProvenanceGraph({ graph }) {
+export default function ProvenanceGraph({ graph, height = 400, label = "supply chain graph" }) {
   const { nodes, edges } = useMemo(() => {
     if (!graph) return { nodes: [], edges: [] };
     const pos = layout(graph.nodes, graph.edges);
@@ -209,22 +214,27 @@ export default function ProvenanceGraph({ graph }) {
           width: 16,
           height: 16,
         },
+        label:
+          e.quantity_consumed != null
+            ? `${e.quantity_consumed} ${e.unit || ""}`.trim()
+            : undefined,
+        labelStyle: { fill: COLORS.ink3, fontSize: 10, fontFamily: "JetBrains Mono Variable" },
       };
     });
     return { nodes, edges };
   }, [graph]);
 
   return (
-    <Panel label="provenance chain" accent="navy" right={`${graph?.nodes?.length || 0} nodes`}>
-      <div className="h-[400px] w-full overflow-hidden rounded-btn border border-line-2 bg-paper-2">
+    <Panel label={label} accent="navy" right={`${graph?.nodes?.length || 0} nodes`}>
+      <div className="w-full overflow-hidden rounded-btn border border-line-2 bg-paper-2" style={{ height }}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
           fitView
-          fitViewOptions={{ padding: 0.2 }}
-          minZoom={0.2}
-          maxZoom={2}
+          fitViewOptions={{ padding: 0.08, minZoom: 0.08, maxZoom: 0.92 }}
+          minZoom={0.05}
+          maxZoom={1.8}
           nodesConnectable={false}
           proOptions={{ hideAttribution: true }}
           defaultEdgeOptions={{ type: "smoothstep" }}
@@ -240,7 +250,7 @@ export default function ProvenanceGraph({ graph }) {
                 ? COLORS.red
                 : n.data?.country === "CA"
                 ? COLORS.navy
-                : COLORS.grey
+                : COLORS.blue
             }
             maskColor="rgba(244,245,246,0.6)"
             style={{ background: COLORS.paper }}
@@ -264,7 +274,7 @@ function Legend() {
         canadian
       </span>
       <span className="flex items-center gap-1.5">
-        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: COLORS.grey }} />
+        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: COLORS.blue }} />
         imported
       </span>
       <span className="flex items-center gap-1.5">
