@@ -15,11 +15,13 @@ services:
       # (gitignored) to enable /draft and /ask; absent = features return 503.
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - ML_CLAUDE_MODEL=${ML_CLAUDE_MODEL:-claude-haiku-4-5-20251001}
-      # Adapter variant selectors (event-day swap; defaults = current behaviour).
+      # Adapter variant selectors (real-spec defaults, 04/05).
       - ML_SERIALIZATION=${ML_SERIALIZATION:-jcs}
       - ML_ST_STRATEGY=${ML_ST_STRATEGY:-flag}
-      - ML_COST_FLOW=${ML_COST_FLOW:-fraction}
-      - ML_REPLAY_RULE=${ML_REPLAY_RULE:-serial}
+      - ML_COST_FLOW=${ML_COST_FLOW:-full}
+      - ML_REPLAY_RULE=${ML_REPLAY_RULE:-hash_only}
+      # Real supplier registry (bundled at /registry in the image).
+      - ML_REGISTRY_PATH=${ML_REGISTRY_PATH:-/registry/supplier_public_keys.json}
       # SQLite store location (P3.1). Container mounts the named volume at /data.
       - ML_DB_PATH=${ML_DB_PATH:-/data/ledger.db}
     healthcheck:

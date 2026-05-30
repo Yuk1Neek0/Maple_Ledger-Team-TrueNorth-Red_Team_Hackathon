@@ -30,13 +30,19 @@ ST_STRATEGY = os.environ.get("ML_ST_STRATEGY", "flag")
 ST_ACTIVITIES = {"manufacture", "assemble", "refine", "integrate"}
 
 # 2. Cost-flow weighting across tiers:
-#    "fraction" - consumption-fraction weighting across the DAG (current)
-#    "full"     - each valid node's own cost counted once, no weighting
-COST_FLOW = os.environ.get("ML_COST_FLOW", "fraction")
+#    "fraction" - consumption-fraction weighting across the DAG
+#    "full"     - each node's own cost counted once, attributed by its own country
+#    Real spec (computation.md): a FLAT sum over all attestations -> "full".
+COST_FLOW = os.environ.get("ML_COST_FLOW", "full")
 
 # 4. Replay-detection key (the most schema-coupled assumption in the verifier).
 #    "serial"          - (supplier_id, output.product_id)  [current default]
 #    "serial_with_lot" - (supplier_id, output.product_id, annotations["lot_id"]) if lot_id set
 #    "hash_only"       - no semantic key; each attestation is unique by content hash alone
 #    The day-of spec may dictate uniqueness via output serial, lot id, batch id, etc.
-REPLAY_RULE = os.environ.get("ML_REPLAY_RULE", "serial")
+#    Real spec: within-chain replay is a repeated attestation_id, NOT a repeated
+#    (supplier, product) — and genuine chains legitimately repeat off-the-shelf
+#    parts (e.g. two identical McMaster screw lots). So the serial key over-flags.
+#    Lane 0 default disables the semantic key (hash_only); Lane B implements the
+#    real replay_within_chain detector.
+REPLAY_RULE = os.environ.get("ML_REPLAY_RULE", "hash_only")

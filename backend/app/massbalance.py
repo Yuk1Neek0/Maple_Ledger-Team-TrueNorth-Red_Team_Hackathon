@@ -17,6 +17,8 @@ def check(chain) -> dict[str, str]:
             for ref in chain.by_hash[c].attestation.inputs:
                 if ref.attestation_hash == h:
                     consumed += ref.quantity_used
-        if consumed > produced:
+        # Over-consumption only; ε = 1e-6 for float-accumulation safety (spec, not
+        # a waste/yield allowance). Under-consumption (leftover) is legitimate.
+        if consumed > produced + 1e-6:
             over[h] = f"consumed {consumed} > produced {produced}"
     return over

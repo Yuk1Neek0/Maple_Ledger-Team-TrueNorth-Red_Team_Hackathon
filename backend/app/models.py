@@ -13,15 +13,17 @@ from enum import Enum
 # ---- immutable, signed ----
 @dataclass(frozen=True)
 class Output:
-    product_id: str
-    quantity: int          # integer units
+    product_id: str        # real: output.name (display label; not a real id)
+    quantity: float        # real: output.quantity_produced (may be fractional)
     unit: str
 
 
 @dataclass(frozen=True)
 class InputRef:
-    attestation_hash: str  # content hash of the consumed attestation
-    quantity_used: int     # how much of that output this node consumed
+    attestation_hash: str  # link key = parent's content_hash (real: parents[].content_hash)
+    quantity_used: float   # real: parents[].quantity_consumed (may be fractional)
+    unit: str = ""         # real: parents[].unit (must equal parent output.unit)
+    parent_id: str = ""    # real: parents[].attestation_id (dangling/anchor checks)
 
 
 @dataclass(frozen=True)
@@ -29,13 +31,19 @@ class Attestation:
     supplier_id: str       # maps to a registry keyid
     output: Output
     inputs: tuple[InputRef, ...]
-    materials_cents: int   # >= 0
-    labour_cents: int      # >= 0
-    work_country: str      # ISO-2, e.g. "CA","CN" — the work-location signal*
-    is_substantial_transformation: bool   # spec-dependent flag*
+    materials_cents: int   # from costs.material_cad × 100, >= 0
+    labour_cents: int      # from costs.labour_cost_cad × 100, >= 0
+    work_country: str      # real: performed_in_country (ISO-2) — the work-location signal
+    is_substantial_transformation: bool   # DERIVED: action_type ∈ {cm,sub,fi} and labour_hours ≥ 4
     timestamp: str         # ISO-8601, used for ordering checks only
-    signature: str         # base64 Ed25519 over canonicalize(payload)
-    # payload = this object minus `signature`
+    signature: str         # real: signature.value — base64 Ed25519 over canonical(wire − signature)
+    attestation_id: str = ""   # real: explicit attestation_id (id model, see 04 §2)
+    version: str = "1.0"
+    action_type: str = ""      # raw_material_supply | component_manufacture | subassembly | final_integration
+    labour_hours: float = 0.0  # real: costs.labour_hours (drives ST; not a cost)
+    # The original wire dict — hashed/verified byte-exact via reference_lib.
+    # Excluded from eq/hash so Attestation stays hashable despite the dict.
+    raw: dict | None = field(default=None, compare=False)
 
 
 # ---- mutable verifier wrapper ----
@@ -68,7 +76,8 @@ class Anomaly:
     reason: Reason
     attestation_hash: str
     detail: str
-    advisory: bool = False          # True only for ANOMALY
+    advisory: bool = False          # True = heuristic; excluded from scored /verify output
+    type_label: str | None = None   # detector override for the spec free-form `type` string
 
 
 @dataclass

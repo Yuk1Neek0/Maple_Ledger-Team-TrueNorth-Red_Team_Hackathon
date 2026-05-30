@@ -95,6 +95,21 @@ def post_attestation(obj: dict) -> dict:
     }
 
 
+@app.post("/verify")
+def post_verify(body: dict) -> dict:
+    """Real spec contract (TECHNICAL_GUIDE §9 / 04 §10): verify a whole chain
+    submitted in one request. Stateless — no store, no prior ingest.
+
+    Request:  { "product_attestation_id": "...", "attestations": [ {...}, ... ] }
+    Response: { product_attestation_id, canadian_content_percentage, designation,
+                chain_valid, anomalies: [ {type, attestation_id, details} ] }
+    """
+    pid = (body or {}).get("product_attestation_id", "")
+    atts = (body or {}).get("attestations", []) or []
+    result, chain = verify.verify_chain(REGISTRY, pid, atts)
+    return verify.to_verify_response(result, chain, pid)
+
+
 @app.get("/verify/{root_hash}")
 def get_verify(root_hash: str) -> dict:
     result = verify.verify_root(STORE, REGISTRY, root_hash)
@@ -124,7 +139,7 @@ def get_registry() -> dict:
     signature is checked against (DESIGN §5)."""
     return {
         sid: {
-            "public_key": entry["public_key"].public_bytes_raw().hex(),
+            "public_key": entry["public_key"],  # base64 (reference_lib format)
             "verified": entry["verified"],
         }
         for sid, entry in REGISTRY.items()

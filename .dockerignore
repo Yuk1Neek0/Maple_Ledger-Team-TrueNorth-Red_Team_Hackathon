@@ -1,0 +1,25 @@
+# Backend build context = repo root; keep it lean. The backend image needs only
+# backend/, schema/, data/registry.json, and provenance-kit/registry/.
+.git
+.claude
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+frontend
+developing
+doc
+5.30
+*.md
+# provenance-kit: only the registry is needed in the image (reference_lib is
+# vendored into backend/app). Exclude the heavy / unused parts.
+provenance-kit/training_corpus.jsonl
+provenance-kit/private_keys
+provenance-kit/worked-example
+provenance-kit/spec
+provenance-kit/self_test.py
+provenance-kit/reference_lib
+provenance-kit/*.md
+# local SQLite stores / dev key material
+data/ledger.db
+data/*.db
+data/dev

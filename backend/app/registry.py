@@ -1,27 +1,50 @@
-"""Load the supplier registry (mock now, real file swapped on the day).
+"""Load the supplier registry (real spec format; multi-shape tolerant).
 
-File shape: { supplier_id: { "public_key": <hex raw 32-byte ed25519>, "verified": bool } }
-Returns an in-memory map with the key already parsed into an Ed25519PublicKey.
+Real shape (provenance-kit/registry/supplier_public_keys.json):
+    { "version": "1.0", "keys": { "sup-0001": "<base64 ed25519 pubkey>", ... } }
+
+Returns an in-memory map { supplier_id: {"public_key": <base64 str>, "verified": bool} }.
+The public key stays a base64 string — that is what reference_lib.verify_attestation
+consumes. "unknown issuer" = a supplier_id absent from the map.
 """
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+_REPO = Path(__file__).resolve().parents[2]
+_REAL = _REPO / "provenance-kit" / "registry" / "supplier_public_keys.json"
+_LEGACY = _REPO / "data" / "registry.json"
 
-_DEFAULT = Path(__file__).resolve().parents[2] / "data" / "registry.json"
+
+def _default_path() -> Path:
+    """Env override, then container mount, then the vendored real registry,
+    then the legacy mock (kept only so old dev flows don't hard-crash)."""
+    env = os.environ.get("ML_REGISTRY_PATH")
+    if env:
+        return Path(env)
+    container = Path("/registry/supplier_public_keys.json")
+    if container.exists():
+        return container
+    if _REAL.exists():
+        return _REAL
+    return _LEGACY
 
 
 def _normalize(raw) -> dict[str, dict]:
-    """Accept several plausible registry shapes and normalize to
-    { id: {"public_key": <hex>, "verified": bool} } (WS4.5). Day-of registry
-    format is an unknown; this absorbs the common variants.
+    """Normalize plausible registry shapes to
+    { id: {"public_key": <b64 or hex str>, "verified": bool} } (04 §5).
 
-      - { id: {public_key|publicKey, verified} }            (current)
+      - { "version": ..., "keys": { id: "<b64>" } }          (REAL spec)
+      - { id: {public_key|publicKey, verified} }              (legacy mock)
       - [ {issuerId|supplier_id|id, publicKey|public_key, verified} ]
       - { "issuers": { ...same as the dict form... } }
     """
+    # REAL spec shape: flat {keys: {id: b64}} — no `verified` concept (all trusted).
+    if isinstance(raw, dict) and isinstance(raw.get("keys"), dict):
+        return {sid: {"public_key": k, "verified": True} for sid, k in raw["keys"].items()}
+
     if isinstance(raw, dict) and isinstance(raw.get("issuers"), (dict, list)):
         raw = raw["issuers"]
     out: dict[str, dict] = {}
@@ -38,10 +61,6 @@ def _normalize(raw) -> dict[str, dict]:
 
 
 def load_registry(path: Path | str | None = None) -> dict[str, dict]:
-    p = Path(path) if path else _DEFAULT
+    p = Path(path) if path else _default_path()
     raw = json.loads(p.read_text(encoding="utf-8"))
-    out: dict[str, dict] = {}
-    for supplier_id, entry in _normalize(raw).items():
-        pub = Ed25519PublicKey.from_public_bytes(bytes.fromhex(entry["public_key"]))
-        out[supplier_id] = {"public_key": pub, "verified": entry["verified"]}
-    return out
+    return _normalize(raw)

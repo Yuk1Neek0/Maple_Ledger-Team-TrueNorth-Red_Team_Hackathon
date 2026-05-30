@@ -13,6 +13,7 @@ import base64
 
 from . import adapters, content, criticality, massbalance
 from .chain import build_chain
+from .detectors import VerifyContext, run_detectors
 from .models import (
     Anomaly,
     Designation,
@@ -52,15 +53,14 @@ class Verifier:
             node = chain.by_hash[h]
             att = node.attestation
 
-            pub, verified = adapters.resolve_key(att.supplier_id, self.registry)
-            node.signer_known = pub is not None and verified
+            pub_b64, verified = adapters.resolve_key(att.supplier_id, self.registry)
+            node.signer_known = pub_b64 is not None and verified
             if not node.signer_known:
                 self._fail(node, Reason.UNKNOWN_ISSUER, anomalies,
                            f"supplier {att.supplier_id} not a verified issuer")
                 continue
 
-            msg = adapters.canonicalize(adapters.payload_dict(att))
-            node.sig_valid = adapters.verify(msg, base64.b64decode(att.signature), pub)
+            node.sig_valid = adapters.verify_signature(att, pub_b64)
             if not node.sig_valid:
                 self._fail(node, Reason.SIGNATURE_INVALID, anomalies, "signature does not verify")
                 continue
@@ -241,3 +241,85 @@ def result_to_dict(r: VerificationResult) -> dict:
     if head is not None:
         out["log_head"] = head
     return out
+
+
+# ---- real spec POST /verify path (04 §10) ---------------------------------
+def verify_chain(registry: dict, product_attestation_id: str, wire_atts: list[dict]):
+    """Verify a whole chain submitted in one request. Stateless: builds the DAG
+    in-memory (no store), runs the engine, then folds in the detector registry.
+    Returns (result, chain)."""
+    atts = []
+    raw_by_att_id: dict[str, dict] = {}
+    for w in wire_atts or []:
+        try:
+            a = adapters.attestation_from_dict(w)
+        except Exception:
+            continue  # malformed entries degrade gracefully
+        atts.append(a)
+        if a.attestation_id:
+            raw_by_att_id[a.attestation_id] = w
+
+    # Root = content hash of the attestation whose id == product_attestation_id.
+    root_hash = None
+    for a in atts:
+        if a.attestation_id == product_attestation_id:
+            root_hash = adapters.compute_hash(a)
+            break
+    if root_hash is None:
+        root_hash = product_attestation_id  # tolerate a content-hash being passed
+
+    chain = build_chain(atts, root_hash)
+    result = Verifier(registry).verify(chain)
+
+    # Additive detector pass (Lanes B–E). Stubs return [] in Lane 0.
+    ctx = VerifyContext(
+        nodes_by_hash=chain.by_hash,
+        nodes_by_att_id={
+            n.attestation.attestation_id: n
+            for n in chain.by_hash.values() if n.attestation.attestation_id
+        },
+        raw_by_att_id=raw_by_att_id,
+        root_hash=chain.root_hash,
+        product_attestation_id=product_attestation_id,
+        registry=registry,
+    )
+    result.anomalies.extend(run_detectors(ctx))
+    return result, chain
+
+
+# Internal Reason -> spec free-form snake_case `type` label (04 §12).
+REASON_TO_TYPE = {
+    Reason.SIGNATURE_INVALID: "signature_invalid",
+    Reason.UNKNOWN_ISSUER: "signature_unknown_supplier",
+    Reason.REPLAY_DETECTED: "replay_within_chain",
+    Reason.BROKEN_LINK: "dangling_parent",
+    Reason.CYCLE: "circular_reference",
+    Reason.MASS_BALANCE: "mass_balance_violation",
+    Reason.TEMPORAL_INVERSION: "timestamp_inversion",
+    Reason.MALFORMED: "insufficient_data",
+}
+
+
+def to_verify_response(result: VerificationResult, chain, product_attestation_id: str) -> dict:
+    """Map the internal result -> the spec response (04 §10). Advisory/heuristic
+    anomalies are dropped (not real violations — surfacing them tanks F1).
+    chain_valid = no scored anomalies remain."""
+    id_by_hash = {h: (n.attestation.attestation_id or h) for h, n in chain.by_hash.items()}
+    anomalies: list[dict] = []
+    seen: set = set()
+    for a in result.anomalies:
+        if getattr(a, "advisory", False):
+            continue
+        att_id = id_by_hash.get(a.attestation_hash, a.attestation_hash)
+        type_label = a.type_label or REASON_TO_TYPE.get(a.reason) or a.reason.value.lower()
+        if (att_id, type_label) in seen:
+            continue
+        seen.add((att_id, type_label))
+        anomalies.append({"type": type_label, "attestation_id": att_id, "details": a.detail})
+    return {
+        "product_attestation_id": product_attestation_id,
+        "canadian_content_percentage": round(result.canadian_pct * 100, 2),
+        "designation": result.designation.value.lower(),
+        "chain_valid": len(anomalies) == 0,
+        "anomalies": anomalies,
+    }

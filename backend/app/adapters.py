@@ -18,6 +18,10 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from . import spec
 from .models import Attestation, InputRef, Output
+from .reference_lib import content_hash as _ref_content_hash
+from .reference_lib import verify_attestation as _ref_verify
+
+_ST_ACTIONS = {"component_manufacture", "subassembly", "final_integration"}
 
 _SCHEMA_PATH = Path(__file__).resolve().parents[2] / "schema" / "attestation.schema.json"
 _schema_cache: dict | None = None
@@ -46,26 +50,58 @@ def payload_dict(att: Attestation) -> dict[str, Any]:
 
 
 def compute_hash(att: Attestation) -> str:
-    """attestation_id = hex(SHA-256(canonicalize(payload)))  (DESIGN §2)."""
+    """Content hash = SHA-256(canonical(wire − signature)).
+
+    For real attestations we hash the ORIGINAL wire dict via the byte-exact
+    reference library (04 §2/§7) — never a reconstructed payload, which would be
+    fragile. Legacy mock objects (no `raw`) fall back to the local canonical form.
+    """
+    if att.raw is not None:
+        return _ref_content_hash(att.raw)
     return hashlib.sha256(canonicalize(payload_dict(att))).hexdigest()
 
 
 def attestation_from_dict(obj: dict[str, Any]) -> Attestation:
-    """Wire dict -> internal Attestation. MOCK shape; swap on the day."""
-    out = obj["output"]
+    """Real wire dict -> internal Attestation (04 §1).
+
+    Maps the spec field names, converts CAD floats to integer cents, derives the
+    substantial-transformation flag from action_type + labour_hours (04 §8), and
+    carries the original wire dict (`raw`) for byte-exact hashing/verification.
+    """
+    out = obj.get("output", {}) or {}
+    costs = obj.get("costs", {}) or {}
+    action_type = obj.get("action_type", "")
+    labour_hours = float(costs.get("labour_hours", 0) or 0)
+    is_st = action_type in _ST_ACTIONS and labour_hours >= 4
+    sig = obj.get("signature")
+    sig_val = sig.get("value", "") if isinstance(sig, dict) else (sig or "")
     return Attestation(
-        supplier_id=obj["supplier_id"],
-        output=Output(out["product_id"], int(out["quantity"]), out["unit"]),
-        inputs=tuple(
-            InputRef(i["attestation_hash"], int(i["quantity_used"]))
-            for i in obj.get("inputs", [])
+        supplier_id=obj.get("supplier_id", ""),
+        output=Output(
+            product_id=out.get("name", ""),
+            quantity=float(out.get("quantity_produced", 0) or 0),
+            unit=out.get("unit", ""),
         ),
-        materials_cents=int(obj["materials_cents"]),
-        labour_cents=int(obj["labour_cents"]),
-        work_country=obj["work_country"],
-        is_substantial_transformation=bool(obj["is_substantial_transformation"]),
-        timestamp=obj["timestamp"],
-        signature=obj["signature"],
+        inputs=tuple(
+            InputRef(
+                attestation_hash=p.get("content_hash", ""),
+                quantity_used=float(p.get("quantity_consumed", 0) or 0),
+                unit=p.get("unit", ""),
+                parent_id=p.get("attestation_id", ""),
+            )
+            for p in obj.get("parents", [])
+        ),
+        materials_cents=round(float(costs.get("material_cad", 0) or 0) * 100),
+        labour_cents=round(float(costs.get("labour_cost_cad", 0) or 0) * 100),
+        work_country=obj.get("performed_in_country", ""),
+        is_substantial_transformation=is_st,
+        timestamp=obj.get("timestamp", ""),
+        signature=sig_val,
+        attestation_id=obj.get("attestation_id", ""),
+        version=obj.get("version", "1.0"),
+        action_type=action_type,
+        labour_hours=labour_hours,
+        raw=obj,
     )
 
 
@@ -107,12 +143,33 @@ def canonicalize(obj: dict) -> bytes:
 
 
 def verify(message: bytes, signature: bytes, public_key: Ed25519PublicKey) -> bool:
-    """Ed25519 verify via pyca/cryptography.
-    SWAP on the day: call the provided reference library."""
+    """Ed25519 verify via pyca/cryptography (legacy raw-bytes path)."""
     try:
         public_key.verify(signature, message)
         return True
     except InvalidSignature:
+        return False
+
+
+def verify_signature(att: Attestation, public_key_b64: str | None) -> bool:
+    """Verify an attestation's signature against the registered supplier key.
+
+    Real path: delegate to the byte-exact reference library over the ORIGINAL
+    wire dict (handles the {algorithm,value} envelope + base64 key). Legacy mock
+    objects (no `raw`) fall back to the local canonical bytes + raw-hex key.
+    """
+    if public_key_b64 is None:
+        return False
+    if att.raw is not None:
+        try:
+            return _ref_verify(att.raw, public_key_b64)
+        except Exception:
+            return False
+    try:  # legacy fallback (mock fixtures)
+        import base64 as _b64
+        pub = Ed25519PublicKey.from_public_bytes(bytes.fromhex(public_key_b64))
+        return verify(canonicalize(payload_dict(att)), _b64.b64decode(att.signature), pub)
+    except Exception:
         return False
 
 
