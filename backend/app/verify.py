@@ -274,6 +274,26 @@ def verify_chain(registry: dict, product_attestation_id: str, wire_atts: list[di
     chain = build_chain(atts, root_hash)
     result = Verifier(registry).verify(chain)
 
+    # replay_within_chain: the same attestation_id submitted more than once.
+    # Needs the PRE-dedup wire list (by_hash/by_att_id collapse duplicates), so it
+    # lives here rather than in a ctx detector. Reason.REPLAY_DETECTED maps to the
+    # "replay_within_chain" type label.
+    counts: dict[str, int] = {}
+    for w in wire_atts or []:
+        aid = w.get("attestation_id")
+        if aid:
+            counts[aid] = counts.get(aid, 0) + 1
+    dup_ids = {aid for aid, n in counts.items() if n > 1}
+    if dup_ids:
+        flagged: set[str] = set()
+        for node in chain.by_hash.values():
+            aid = node.attestation.attestation_id
+            if aid in dup_ids and aid not in flagged:
+                flagged.add(aid)
+                result.anomalies.append(Anomaly(
+                    Reason.REPLAY_DETECTED, node.hash,
+                    "duplicate attestation_id in submission"))
+
     # Additive detector pass (Lanes B–E). Stubs return [] in Lane 0.
     ctx = VerifyContext(
         nodes_by_hash=chain.by_hash,
