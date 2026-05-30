@@ -1,4 +1,0 @@
-pytest>=7.0
-pytest-bdd>=6.0
-cryptography>=41.0
-requests>=2.28
