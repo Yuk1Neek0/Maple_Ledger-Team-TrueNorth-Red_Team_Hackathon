@@ -2,6 +2,10 @@
 
 **Team TrueNorth · Ottawa Defence Hackathon**
 
+- **Ashton (Zhengshen) Shu** · [@MtsYama](https://github.com/MtsYama) · [LinkedIn](https://www.linkedin.com/in/zhengshen-shu/)
+- **Sikai Han** · [@Yuk1Neek0](https://github.com/Yuk1Neek0) · [LinkedIn](https://www.linkedin.com/in/sikai-han-6b7266348/)
+- **Laxman KC** · [@laxkc](https://github.com/laxkc) · [LinkedIn](https://www.linkedin.com/in/laxmankc/)
+
 "Buy Canadian" procurement rules turn on whether a product is *Product of Canada* or
 *Made in Canada*, but those claims rest on unverifiable supplier self-reporting. Maple
 Ledger makes provenance **cryptographic**: every supplier contribution is a signed
