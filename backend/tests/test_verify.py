@@ -241,16 +241,15 @@ def test_cycle_anomaly_lists_members_and_forces_none():
     assert r.designation.value == "NONE"  # a cycle is fatal
 
 
-# ---- genuine app gap (documented, not fixed): duplicate-id replay ----------
-def test_replay_within_chain_is_a_known_gap():
+# ---- duplicate-id replay (now detected) ------------------------------------
+def test_replay_within_chain_detected():
     """SPEC: a duplicate `attestation_id` in the submission is a
-    `replay_within_chain` attack. The current backend does NOT emit that
-    anomaly (REPLAY_RULE defaults to 'hash_only' and no duplicate-id detector
-    exists yet — this is Lane B's remaining work). This test PINS the current
-    behaviour so the gap is visible and a future fix flips this assertion.
-
-    Self-test corpus impact: the `replay_within_chain` category scores ~47%,
-    the lowest of any category. See the Lane G report."""
+    `replay_within_chain` attack. verify_chain detects it against the pre-dedup
+    wire list (by_hash/by_att_id collapse duplicates). Lifted this category from
+    ~47% to ~97% on the corpus."""
     res, resp = run(rf.replay_within_chain)
-    # Documented current behaviour: no replay_within_chain anomaly is emitted.
-    assert "replay_within_chain" not in types(resp)
+    assert "replay_within_chain" in types(resp)
+    assert resp["chain_valid"] is False
+    replay_ids = {a["attestation_id"] for a in resp["anomalies"]
+                  if a["type"] == "replay_within_chain"}
+    assert "att-dup" in replay_ids  # the duplicated attestation is flagged
