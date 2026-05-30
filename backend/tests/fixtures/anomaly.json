@@ -1,0 +1,83 @@
+{
+  "description": "valid signature but inflated (~5x) labour cost",
+  "root_hash": "5303e4aadd97aadb8115c2b052e753b17d2d06fec1ac0e64c8d3f2354259427e",
+  "expected": {
+    "reason": "ANOMALY"
+  },
+  "attestations": [
+    {
+      "supplier_id": "SUP-ALU",
+      "output": {
+        "product_id": "raw_aluminum",
+        "quantity": 1,
+        "unit": "kg"
+      },
+      "inputs": [],
+      "materials_cents": 500,
+      "labour_cents": 200,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-01T08:00:00Z",
+      "signature": "BbK6Y7WJQ3R8WPh94bVxLg9+6ejkI/dUOV3wRCbjOb/L2OzqvlRa8bjy49YyQN1EMt95ta/jMrybpdjEyd9wBw=="
+    },
+    {
+      "supplier_id": "SUP-BEAR",
+      "output": {
+        "product_id": "steel_bearings",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [],
+      "materials_cents": 40,
+      "labour_cents": 10,
+      "work_country": "CN",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-01T08:00:00Z",
+      "signature": "il5PZNuzcohfCx5WWRIp81ToR5oRPnDDMtMmRUsIZlicWg1GbSTuo36fzn92DOcajC9rMrD/ykZEMyRuygXnAQ=="
+    },
+    {
+      "supplier_id": "SUP-MOTOR",
+      "output": {
+        "product_id": "motor_housing",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "cb02d68739bf250608d06276833f7a1ca995d6ef95c1c2c58d456fba0cb59db1",
+          "quantity_used": 1
+        },
+        {
+          "attestation_hash": "b738ffd09ca2675ad06a8de900399f789ca4c2a3c70d8dabcf10ed7f2878187f",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 0,
+      "labour_cents": 1500,
+      "work_country": "CA",
+      "is_substantial_transformation": true,
+      "timestamp": "2026-05-02T08:00:00Z",
+      "signature": "liO+2On44e1orHxfkGJXOsG56i5v6BkCTrO3slrW0IBVtVH0FAVD78vMe+ZnMJ6SClJXnSwhNdgv+56LyqPNDQ=="
+    },
+    {
+      "supplier_id": "SUP-DRONE",
+      "output": {
+        "product_id": "drone_X1",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "10acde21a5d5ef6ebde31dec9b509e8d79c3192aff9975e23b2b6ed5c21ca2e6",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 20,
+      "labour_cents": 400,
+      "work_country": "CA",
+      "is_substantial_transformation": true,
+      "timestamp": "2026-05-03T08:00:00Z",
+      "signature": "jgGdzdWpNRqm2rjXbfQ5uVne/aMv+ekKMzsVuSJzWAP5iicsHNLcD28Ors2AZcHrRZsOmvQSqx2919E3RYnBDg=="
+    }
+  ]
+}

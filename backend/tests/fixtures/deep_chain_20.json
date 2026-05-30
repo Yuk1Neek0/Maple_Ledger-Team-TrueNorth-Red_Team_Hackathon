@@ -1,0 +1,405 @@
+{
+  "description": "20-tier linear chain, all CA",
+  "root_hash": "ddb1ad0300d899ea3b53d969d2c8231e11de32c42c1d3544330484880fe0eb07",
+  "expected": {
+    "designation": "PRODUCT_OF_CANADA",
+    "tier_count": 20
+  },
+  "attestations": [
+    {
+      "supplier_id": "SUP-ALU",
+      "output": {
+        "product_id": "tier_0",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [],
+      "materials_cents": 10,
+      "labour_cents": 20,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-01T08:00:00Z",
+      "signature": "NVzXItP+TXfFX6vVK+KTizNvzoj5DnyOWqX8zKx7Eh/NV5So7ZinC6Aie7QnkyDdUuSXM2jUbLtPC4O/DdlzDQ=="
+    },
+    {
+      "supplier_id": "SUP-BEAR",
+      "output": {
+        "product_id": "tier_1",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "b6fe7751e04d64b495e7ee2639f7208a55a26f08f897ed0ce78712f7ba2928b9",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 20,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-02T08:00:00Z",
+      "signature": "O3+KgGWx/7I0AmEMyafYfDi1uaLuXA6gBPtHL7FTbnCOLIjZ9whtOVIVCtVxPjXLttr1O5Cz44Qb6BRZTvlwCA=="
+    },
+    {
+      "supplier_id": "SUP-DRONE",
+      "output": {
+        "product_id": "tier_2",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "d5b429a0c9d458e0756e556a27aed8d9ba67563a70e97d01bc09a5ad7ca7ffda",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 20,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-03T08:00:00Z",
+      "signature": "aRF125fIWY0dsiGEau18PriDBR1qWouo/DJJfHAylrW2ulTJsuFQfWJ1/3wsDs2MyM3CvXNgwmlVB/iEcCfODQ=="
+    },
+    {
+      "supplier_id": "SUP-MOTOR",
+      "output": {
+        "product_id": "tier_3",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "aeae800ad5b9849ca05e4d0b5280871f8f228ad58c013091ae62792b929d454b",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 20,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-04T08:00:00Z",
+      "signature": "PTgJod+A59fb4ceUJxjcNSso6r4LgC/49XL44Qkta7EhKITFrjs0dlpro1c+M9/U48l4TuQBTHaVot00MUudBg=="
+    },
+    {
+      "supplier_id": "SUP-BEAR",
+      "output": {
+        "product_id": "tier_4",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "97aff0a219c95f5a7aba9ca19067687d2b67b6e98303e7abc02905c5c18d17c9",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 20,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-05T08:00:00Z",
+      "signature": "wXFf6IsRMITvOKiqsr9xrKIUBbGfVU0S/8FuMaqI0TdjfM/RprsRN3CRG2eZ0jC2RalGQNo8GF9mv4L1i6VmCA=="
+    },
+    {
+      "supplier_id": "SUP-DRONE",
+      "output": {
+        "product_id": "tier_5",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "e8c336c5e8c516b6add84baf755e7f7040b516d31dff2441510e78890bcba5a1",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 20,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-06T08:00:00Z",
+      "signature": "Amwko6hHgXA3ktxr79USQYQ2eBZF2IZVBo8O5QhPHA8j1MZAV/2fj+GrtEOzlvBBbjJifcf6sPRJRkFEktZECg=="
+    },
+    {
+      "supplier_id": "SUP-MOTOR",
+      "output": {
+        "product_id": "tier_6",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "eef3b3213ae252313d30766f8915e4063e3cf8e43b28914708db0411661fa82d",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 20,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-07T08:00:00Z",
+      "signature": "Jiz4zkv391pvYZhfU/nOjVLR3NBvyBcaRlbHX97+Ok/PytKwEcgxWQq512Fx6tcJHjUH8UtfceQnOLWCuN+FAA=="
+    },
+    {
+      "supplier_id": "SUP-BEAR",
+      "output": {
+        "product_id": "tier_7",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "5db39788177beba2c4c8fec20f2743b0eef489ebcb07317dcc3d5d13883d965b",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 20,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-08T08:00:00Z",
+      "signature": "GdlRjx4EbkuSDOH1nTe2W4cNF0d4NZsWQrjG8cAiS8JF/qyZzymYQf/j8n3xcbrti+zxS8s9pij1sS/SoMo9Bw=="
+    },
+    {
+      "supplier_id": "SUP-DRONE",
+      "output": {
+        "product_id": "tier_8",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "10527f0917d38f382d80a52018a7ff97e690ae6175d9289c8110d9451dbccc94",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 20,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-09T08:00:00Z",
+      "signature": "ZuS/tuj3zUjCsnv2jyBzqIHF5CjptNv07TCP7JM+sMlissXCJM/HXYgUsVno0c2sMt0FKwwpOVoioWXZwkDDAw=="
+    },
+    {
+      "supplier_id": "SUP-MOTOR",
+      "output": {
+        "product_id": "tier_9",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "38474014e1187b68f4996fe83937b6901dc71e611b711d9c9f4151358263542b",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 20,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-10T08:00:00Z",
+      "signature": "RzTaGS0n2Jn98DbLQfPkhpnUNJyw9DaVKqD0l8m3akmJJrDaTijBygucNPgubML/tdZOzK3B0B8GCt4KFC4/CQ=="
+    },
+    {
+      "supplier_id": "SUP-BEAR",
+      "output": {
+        "product_id": "tier_10",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "8b0038d7a9d63c121e7e321426a07ffab29c695a23874ac3287dc8efb8b1189d",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 20,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-11T08:00:00Z",
+      "signature": "lk3dyah5iTmQ92oFqMY92XVYA4Yv25bzOGgvPLtuom+zQqtIi72e9vOzCHTexSg3+JOTt1Nx5+jgL5JtgU3LCw=="
+    },
+    {
+      "supplier_id": "SUP-DRONE",
+      "output": {
+        "product_id": "tier_11",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "a7c9566f968dc377b556b5ab52fc5904d51277cfd2057908186c66b958e7746f",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 20,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-12T08:00:00Z",
+      "signature": "3LunCYL550JwT6xFiHqpSygNFAmOWAGWgwRaRtKGql4SM3M1nMUGRO7c6XK1GPvFwKWchKHgnPeP2gDrAlIxBA=="
+    },
+    {
+      "supplier_id": "SUP-MOTOR",
+      "output": {
+        "product_id": "tier_12",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "005ab1234ef1ae655dc5ceabc04cb6b8dc3c33248b2a8bee11452427eb6d3906",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 20,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-13T08:00:00Z",
+      "signature": "rE1xk+HqGY/of+3C9O2hL2YgqXjIBFxmqnEeFXlJWJTozLeHv/UiO+1vg/KXU637oTdzp2iKkJSOz+G2kcqdCQ=="
+    },
+    {
+      "supplier_id": "SUP-BEAR",
+      "output": {
+        "product_id": "tier_13",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "9b945646bc142921889ca7bdac69309f01359f5956e91178d9bf3c11c6f24ad2",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 20,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-14T08:00:00Z",
+      "signature": "0acz3aak94+4BqbEhLbJIMjMxezaF11DW70RZ0zH6IBttroRGgHiRfTcuunG64hRj3CvRB2ClgeBUZ5vd0PJDg=="
+    },
+    {
+      "supplier_id": "SUP-DRONE",
+      "output": {
+        "product_id": "tier_14",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "d267a3fab861d16d5337d50ad95df1531a3ab2d59d8a9d9d7ecd72f440fcd631",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 20,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-15T08:00:00Z",
+      "signature": "Lfs6MhYl6AI8GE6SNnAaVRNzy3/aXuK7qzvzdKz4MXJ0lAlFtQ4Hhgb/BbrDCMaci9jXwvQd/ZNQtn0ROreIDA=="
+    },
+    {
+      "supplier_id": "SUP-MOTOR",
+      "output": {
+        "product_id": "tier_15",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "b34195d6fb3b217d3ecd46875a74f9d18c6d1a5e80e19871f24aedf06ef630c5",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 20,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-16T08:00:00Z",
+      "signature": "ZIz0CR6xgkgJPEipwr7Sq9idMh0oIqEw47xeyTelna9uhTbPI1BPVvSo7sm7gAgkuVPc7CEDbAsnrRtM6PdpAA=="
+    },
+    {
+      "supplier_id": "SUP-BEAR",
+      "output": {
+        "product_id": "tier_16",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "accf4d73f54acd4fa19d22d9f7ab386d2621816ae154aeb20642cdf218b634dd",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 20,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-17T08:00:00Z",
+      "signature": "ZIp7k4BIXOCPUTvdpBJB2cMCapahfMFP5W80r3kZBtZGCO7bBxDW/Ne/SX/HC0NfPSc6gpzISAWtOLLFpoDZCA=="
+    },
+    {
+      "supplier_id": "SUP-DRONE",
+      "output": {
+        "product_id": "tier_17",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "c295828e118f94cf6c8e5de00b705a8c14ec2a00e52b100841c9fe1adc581b5c",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 20,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-18T08:00:00Z",
+      "signature": "lPydboRTSJOqIfQ0fKuL+/xTzrh6LN29gGsDbFwkhnRSzdOarp8cIj1KKpf9tmF3/bDCfq1gRic9NPKFBk3DBQ=="
+    },
+    {
+      "supplier_id": "SUP-MOTOR",
+      "output": {
+        "product_id": "tier_18",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "5f9334f85dfc4a2ed8c0166bb035d5aba140531fb8a9ee60bc810a70a4948ebd",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 20,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-19T08:00:00Z",
+      "signature": "iUOigUVvHeOLvLZ68BoV+ngMFqvPB8NC7/lHADsSWx1GQiOVd7+6BV4wzh5uE7hfZuU9C940W3sqUT0hqzj3DA=="
+    },
+    {
+      "supplier_id": "SUP-BEAR",
+      "output": {
+        "product_id": "tier_19",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "d802c6f3abd5eda188c4e03a1e239744010f08eed2037c4041e806d89ecd1c35",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 20,
+      "work_country": "CA",
+      "is_substantial_transformation": true,
+      "timestamp": "2026-05-20T08:00:00Z",
+      "signature": "r8y26TAFXO9iRK5g1cJH/YZMNSsWKib7OrUzBKKsLVRWPG34TQlvTtPUOr1jKwHKmH1w8kimYq1dYn2MO7F6Dw=="
+    }
+  ]
+}

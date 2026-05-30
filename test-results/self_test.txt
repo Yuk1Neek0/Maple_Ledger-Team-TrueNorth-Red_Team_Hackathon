@@ -1,0 +1,21 @@
+
+overall: 94.7%  (1000 cases)
+
+category                      avg     n
+circular                       69.6    19
+clean                          99.7   705
+cost_anomaly                   99.2    15
+dangling_parent               100.0    13
+mass_balance                   85.9    13
+parent_hash_mismatch           72.6    12
+replay_within_chain            46.9    11
+signature_corrupt              84.4    17
+t4_cost_outlier                76.5    17
+t4_labour_outlier              71.4    28
+t4_origin_outlier              75.4    38
+t4_timing_outlier             100.0    41
+tamper_no_resign               82.0     7
+timestamp_inversion            85.0    20
+transformation_implausible     86.6    17
+unit_mismatch                 100.0    12
+unknown_supplier               76.7    15

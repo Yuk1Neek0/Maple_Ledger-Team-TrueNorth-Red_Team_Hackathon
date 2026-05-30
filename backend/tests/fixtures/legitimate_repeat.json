@@ -1,0 +1,121 @@
+{
+  "description": "same (issuer, product_id) across two chains is legitimate, not a replay",
+  "root_hash": "aed5392c49bc9150e421f9a9e188f65728468e12c7d187c9ddbe35dc5f3ee621",
+  "expected": {
+    "designation": "PRODUCT_OF_CANADA",
+    "note": "two production runs of raw_aluminum by SUP-ALU; neither chain sees a replay",
+    "secondary_root_hash": "73d2f069682dd69d25aeecab01bdaf95d423b8b9e9fa411d44e2962ebeba69bd"
+  },
+  "attestations": [
+    {
+      "supplier_id": "SUP-ALU",
+      "output": {
+        "product_id": "raw_aluminum",
+        "quantity": 1,
+        "unit": "kg"
+      },
+      "inputs": [],
+      "materials_cents": 500,
+      "labour_cents": 200,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-01T08:00:00Z",
+      "signature": "BbK6Y7WJQ3R8WPh94bVxLg9+6ejkI/dUOV3wRCbjOb/L2OzqvlRa8bjy49YyQN1EMt95ta/jMrybpdjEyd9wBw=="
+    },
+    {
+      "supplier_id": "SUP-ALU",
+      "output": {
+        "product_id": "raw_aluminum",
+        "quantity": 1,
+        "unit": "kg"
+      },
+      "inputs": [],
+      "materials_cents": 600,
+      "labour_cents": 200,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-02T08:00:00Z",
+      "signature": "RdHQe/EdSkwDE0g0VzAoNsxJlEhFJ1Zx3CFD3OkuB9xgkExoYdzsP8eKLRfqMgwqZsMUL+CAQiPRYBs0raWzCg=="
+    },
+    {
+      "supplier_id": "SUP-MOTOR",
+      "output": {
+        "product_id": "motor_lr1",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "cb02d68739bf250608d06276833f7a1ca995d6ef95c1c2c58d456fba0cb59db1",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 0,
+      "labour_cents": 300,
+      "work_country": "CA",
+      "is_substantial_transformation": true,
+      "timestamp": "2026-05-02T08:00:00Z",
+      "signature": "N04pEWdyiodFNkeVzy3JHajm6Balzuf9xWzDtdxMBZtXfHAk+nr0uj2Nca2xAt2pQwLAHjKw0rBmLnvArl+OBw=="
+    },
+    {
+      "supplier_id": "SUP-MOTOR",
+      "output": {
+        "product_id": "motor_lr2",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "f5f64db3866206717d334a0e751de55af8fd27ef890869490c0f5cee8d1e494c",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 0,
+      "labour_cents": 300,
+      "work_country": "CA",
+      "is_substantial_transformation": true,
+      "timestamp": "2026-05-02T08:00:00Z",
+      "signature": "M7YXCmit+xs6y/pHaGno+6WOWxD+/qt/FydYHPyoV8SOoWfAlkqKJpM+s9/LBjkjkp0JiwkNR6V3DGAozbhSAw=="
+    },
+    {
+      "supplier_id": "SUP-DRONE",
+      "output": {
+        "product_id": "drone_lr1",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "b47ef69a7b5c3e21f3518c7f51c6958621739f375e99afb909d94f7f5e1cad99",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 20,
+      "labour_cents": 400,
+      "work_country": "CA",
+      "is_substantial_transformation": true,
+      "timestamp": "2026-05-03T08:00:00Z",
+      "signature": "8zyA0iOA55J5IAjg4DRcg3nghqC+w5h21I6UD4wx2zc7ojcUr4frfxwEQakXBZz1b8vnyJuBRb5VUVT7tZfQBw=="
+    },
+    {
+      "supplier_id": "SUP-DRONE",
+      "output": {
+        "product_id": "drone_lr2",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "d33cce9844b070907e7caecbbc72a3fb435fdf64b3d3588c8cc2a4c5db8e3eb8",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 20,
+      "labour_cents": 400,
+      "work_country": "CA",
+      "is_substantial_transformation": true,
+      "timestamp": "2026-05-03T08:00:00Z",
+      "signature": "jK1qvlgmsMQ5GGPkEOGX3I3eKZGzwFNkEau13rxB9IicKfYgaEllEP06sdBpf3jKRbk5mLMf1FLMIZrY1Lu+DQ=="
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "description": "3-node cycle A->B->C->A (synthetic hashes)",
+  "root_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "expected": {
+    "designation": "NONE",
+    "reason": "CYCLE",
+    "cycle_size": 3
+  },
+  "attestations": [
+    {
+      "supplier_id": "SUP-A",
+      "output": {
+        "product_id": "prod_a",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 10,
+      "work_country": "CA",
+      "is_substantial_transformation": true,
+      "timestamp": "2026-05-01T08:00:00Z",
+      "signature": "AA==",
+      "_synthetic_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "supplier_id": "SUP-B",
+      "output": {
+        "product_id": "prod_b",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 10,
+      "work_country": "CA",
+      "is_substantial_transformation": true,
+      "timestamp": "2026-05-01T08:00:00Z",
+      "signature": "AA==",
+      "_synthetic_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "supplier_id": "SUP-C",
+      "output": {
+        "product_id": "prod_c",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 10,
+      "work_country": "CA",
+      "is_substantial_transformation": true,
+      "timestamp": "2026-05-01T08:00:00Z",
+      "signature": "AA==",
+      "_synthetic_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+  ]
+}
