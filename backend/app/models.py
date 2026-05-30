@@ -53,7 +53,14 @@ class Reason(str, Enum):            # precedence order top->bottom (§3.3)
     CYCLE = "CYCLE"
     MASS_BALANCE = "MASS_BALANCE"   # quantity overdraw — HARD reject
     TEMPORAL_INVERSION = "TEMPORAL_INVERSION"  # input later than consumer — advisory
-    ANOMALY = "ANOMALY"             # advisory only, never rejects
+    ANOMALY = "ANOMALY"             # advisory only, never rejects (IsolationForest)
+    # P5 rule-based advisories (all advisory=True, never affect verdict).
+    ZERO_LABOUR_ON_ST = "ZERO_LABOUR_ON_ST"        # ST claimed but no labour cost
+    HIGH_FOREIGN_DEPENDENCY = "HIGH_FOREIGN_DEPENDENCY"  # >=40% foreign cost on a passing verdict
+    SUSPICIOUS_COST_SPIKE = "SUSPICIOUS_COST_SPIKE"  # >=5x median of sibling inputs
+    LOW_CANADIAN_WITH_CLAIM = "LOW_CANADIAN_WITH_CLAIM"  # ST=true but work_country != CA
+    LABOUR_COST_OUTLIER = "LABOUR_COST_OUTLIER"    # |z-score| of labour_per_unit >= 3
+    TIMESTAMP_BURST = "TIMESTAMP_BURST"            # >3 atts from same supplier within 60s
 
 
 @dataclass

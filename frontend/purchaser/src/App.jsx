@@ -1,7 +1,7 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fetchVerification } from "./api.js";
 import { USE_MOCK, BACKEND_URL } from "./config.js";
-import { mockGraph } from "./mockData.js";
+import { mockGraph, DEMO_HASHES } from "./mockData.js";
 import QrScanner from "./components/QrScanner.jsx";
 import VerdictCard from "./components/VerdictCard.jsx";
 import ProvenanceGraph from "./components/ProvenanceGraph.jsx";
@@ -89,6 +89,7 @@ export default function App() {
               <StatusNode tone="signal" label="system ready" blink />
               <span className="text-faint">awaiting scan</span>
             </div>
+            <DemoHashChips onPick={onScan} />
             <QrScanner onResult={onScan} />
           </div>
         )}
@@ -148,8 +149,63 @@ export default function App() {
   );
 }
 
+// DemoHashChips (P3.4): one-click buttons that fire onScan(hash) with a curated
+// fixture root. Seeded by `python scripts/seed.py` against a live backend. The
+// labels also tell the audience what each demo proves before they click.
+function DemoHashChips({ onPick }) {
+  if (USE_MOCK) return null;  // chips only make sense against the live backend
+  const toneClass = {
+    ok: "border-signal/50 text-signal hover:bg-signal/10",
+    fail: "border-alarm/50 text-alarm hover:bg-alarm/10",
+    advisory: "border-amber/50 text-amber hover:bg-amber/10",
+  };
+  return (
+    <div className="border border-line bg-panel px-3 py-2.5">
+      <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.14em] text-dim">
+        <span>demo presets</span>
+        <span className="text-faint">click to verify · seeded fixtures only</span>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {DEMO_HASHES.map((d) => (
+          <button
+            key={d.hash}
+            type="button"
+            onClick={() => onPick(d.hash)}
+            title={d.hash}
+            className={`border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] transition ${toneClass[d.tone] || toneClass.ok}`}
+          >
+            {d.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ModeBadge() {
-  if (USE_MOCK) {
+  // Four states (P3.3):
+  //   MOCK              → ?mock=1 or VITE_USE_MOCK=true
+  //   LIVE — DOWN       → live mode but backend /health/details unreachable
+  //   LIVE — NO DATA    → live, reachable, but store is empty (run scripts/seed.py)
+  //   LIVE              → green, reachable, store has data
+  // Renamed without breaking the existing styling — keeps the StatusNode look.
+  const [health, setHealth] = useState({ state: USE_MOCK ? "mock" : "probing" });
+
+  useEffect(() => {
+    if (USE_MOCK) return;
+    let alive = true;
+    fetch(`${BACKEND_URL}/health/details`, { headers: { Accept: "application/json" } })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((d) => {
+        if (!alive) return;
+        if (!d.store_count) setHealth({ state: "empty", detail: d });
+        else setHealth({ state: "live", detail: d });
+      })
+      .catch(() => alive && setHealth({ state: "down" }));
+    return () => { alive = false; };
+  }, []);
+
+  if (health.state === "mock") {
     return (
       <span
         title="Showing hardcoded mock data. Append ?mock=0 to use the live backend."
@@ -159,6 +215,27 @@ function ModeBadge() {
       </span>
     );
   }
+  if (health.state === "down") {
+    return (
+      <span
+        title={`Live mode, but ${BACKEND_URL}/health/details did not respond. Is verifier-backend running?`}
+        className="border border-red-500/60 bg-red-500/10 px-2.5 py-1"
+      >
+        <StatusNode tone="amber" label="LIVE — BACKEND DOWN" blink />
+      </span>
+    );
+  }
+  if (health.state === "empty") {
+    return (
+      <span
+        title="Live backend reachable but no attestations are seeded. Run: python scripts/seed.py"
+        className="border border-amber/60 bg-amber/15 px-2.5 py-1"
+      >
+        <StatusNode tone="amber" label="LIVE — NO DATA SEEDED" blink />
+      </span>
+    );
+  }
+  // probing → render the optimistic LIVE chip while we wait
   return (
     <span
       title={`Calling the live verifier at ${BACKEND_URL}`}
@@ -439,6 +516,34 @@ const MANUAL_SECTIONS = [
         <p>
           A <b className="text-amber">critical</b> component made outside Canada is flagged
           <b className="text-amber"> ⚠ offshore</b> — a strategic dependency worth watching.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "ledger",
+    title: "Transparency ledger",
+    body: (
+      <>
+        <p>
+          Every accepted attestation is appended to an{" "}
+          <b>append-only transparency log</b> kept by the verifier (SQLite-backed,
+          one row per submission).
+        </p>
+        <p>
+          Each log entry stores its own{" "}
+          <code className="text-cyan">chain_hash = sha256(prev_chain || attestation_hash)</code>
+          {" — "}so every entry commits to the fingerprint of all previous entries.
+          A tampered prior row breaks the chain on the next verify-pass.
+        </p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>Anchored nodes carry a <code className="text-signal">#seq</code> badge in the provenance graph.</li>
+          <li><code className="text-signal">GET /log/head</code> returns the current chain head — a single hex string that summarises the whole ledger.</li>
+          <li><code className="text-signal">GET /log/&#123;hash&#125;</code> answers &quot;is this attestation in the ledger?&quot;.</li>
+        </ul>
+        <p className="text-faint">
+          Roadmap: the rolling chain hash is the simplest tamper-evident structure.
+          Full Merkle-tree inclusion proofs (Sigsum-style) are the next layer.
         </p>
       </>
     ),

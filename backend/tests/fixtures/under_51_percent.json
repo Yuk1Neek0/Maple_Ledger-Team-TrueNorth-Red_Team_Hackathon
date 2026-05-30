@@ -1,0 +1,84 @@
+{
+  "description": "majority foreign cost, last ST in CA -> NONE",
+  "root_hash": "4fbe92bf7a0e8de6b968c74b970549ba0d9ce19707338e5fbfdbf476f89e39b3",
+  "expected": {
+    "designation": "NONE",
+    "reason": "BELOW_51_THRESHOLD"
+  },
+  "attestations": [
+    {
+      "supplier_id": "SUP-ALU",
+      "output": {
+        "product_id": "raw_aluminum",
+        "quantity": 1,
+        "unit": "kg"
+      },
+      "inputs": [],
+      "materials_cents": 100,
+      "labour_cents": 50,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-01T08:00:00Z",
+      "signature": "6EPAHT6FdHiiVtI/FzEHv9DXM55G+YQpInwZl9z/Kilwg1BkvWYOA0ms+4LsMOyfeICf0oOuf47y7NrBut/5DQ=="
+    },
+    {
+      "supplier_id": "SUP-BEAR",
+      "output": {
+        "product_id": "steel_bearings",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [],
+      "materials_cents": 5000,
+      "labour_cents": 1000,
+      "work_country": "CN",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-01T08:00:00Z",
+      "signature": "Idd+7oG2MdxzKjI77kekg0k2pOQYelSQO5Q0e8qhqTMWYspKLN1wKMNRBMB6nNruNGUUWyeoadtxlClG1UqECA=="
+    },
+    {
+      "supplier_id": "SUP-MOTOR",
+      "output": {
+        "product_id": "motor_housing",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "dc1a82b9c50913f3664d925b9660323f1616a540037bdc46a79ee9d84dee04da",
+          "quantity_used": 1
+        },
+        {
+          "attestation_hash": "eb80fdaef35bc6ad175bef3f35c7e04f18a933b03585c10662dacabf0501913c",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 0,
+      "labour_cents": 100,
+      "work_country": "CA",
+      "is_substantial_transformation": true,
+      "timestamp": "2026-05-02T08:00:00Z",
+      "signature": "+9Yy7NIbwDoCZT5uGb5jGcIfvso9uqdQeCnLzMQQvthCZ+Fw5hg6NZ/guscCVtFccd3xhAEBL25yPxutdpANBg=="
+    },
+    {
+      "supplier_id": "SUP-DRONE",
+      "output": {
+        "product_id": "drone_X1",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "12556f18b2e369c23cbbf285da2fbc5b325690061688235c09efce93a925db04",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 10,
+      "labour_cents": 50,
+      "work_country": "CA",
+      "is_substantial_transformation": true,
+      "timestamp": "2026-05-03T08:00:00Z",
+      "signature": "/wLp8xluY4pvy48OsaLEpqPUW5V9V6mf+/eXGa/j2V8v4sY5dz+UeZzjg/Zs7qYlnukeM5d+ZNxTiVmB9Ul5Cw=="
+    }
+  ]
+}

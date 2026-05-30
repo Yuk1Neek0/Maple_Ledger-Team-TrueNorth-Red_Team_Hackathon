@@ -33,3 +33,10 @@ ST_ACTIVITIES = {"manufacture", "assemble", "refine", "integrate"}
 #    "fraction" - consumption-fraction weighting across the DAG (current)
 #    "full"     - each valid node's own cost counted once, no weighting
 COST_FLOW = os.environ.get("ML_COST_FLOW", "fraction")
+
+# 4. Replay-detection key (the most schema-coupled assumption in the verifier).
+#    "serial"          - (supplier_id, output.product_id)  [current default]
+#    "serial_with_lot" - (supplier_id, output.product_id, annotations["lot_id"]) if lot_id set
+#    "hash_only"       - no semantic key; each attestation is unique by content hash alone
+#    The day-of spec may dictate uniqueness via output serial, lot id, batch id, etc.
+REPLAY_RULE = os.environ.get("ML_REPLAY_RULE", "serial")

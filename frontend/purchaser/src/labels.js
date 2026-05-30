@@ -39,7 +39,15 @@ export const ANOMALY_LABEL = {
   BROKEN_LINK: "Broken provenance link",
   CYCLE: "Circular provenance",
   MASS_BALANCE: "Mass-balance mismatch",
+  TEMPORAL_INVERSION: "Out-of-order timestamps",
   ANOMALY: "Statistical anomaly",
+  // P5 rule-based advisories
+  ZERO_LABOUR_ON_ST: "Transformation claimed without labour",
+  HIGH_FOREIGN_DEPENDENCY: "High foreign-cost dependency",
+  SUSPICIOUS_COST_SPIKE: "Cost spike vs sibling inputs",
+  LOW_CANADIAN_WITH_CLAIM: "Transformation claimed outside Canada",
+  LABOUR_COST_OUTLIER: "Labour cost outlier",
+  TIMESTAMP_BURST: "Submission burst from one supplier",
 };
 
 export function anomalyLabel(reason) {
@@ -61,6 +69,13 @@ export const ANOMALY_FALLBACK_DETAIL = {
   MASS_BALANCE:
     "The declared inputs do not balance against the declared output.",
   ANOMALY: "Something about this stage looks unusual and was flagged for review.",
+  TEMPORAL_INVERSION: "An input attestation is dated after its consumer — possible clock issue.",
+  ZERO_LABOUR_ON_ST: "This step is labelled as a substantial transformation but reports zero labour cost.",
+  HIGH_FOREIGN_DEPENDENCY: "A foreign country contributes a large share of this product's cost — strategic risk worth watching.",
+  SUSPICIOUS_COST_SPIKE: "One input is much more expensive than its peers feeding the same step.",
+  LOW_CANADIAN_WITH_CLAIM: "A node claims substantial transformation but the work was done outside Canada.",
+  LABOUR_COST_OUTLIER: "This node's labour-per-unit is statistically far from the chain average.",
+  TIMESTAMP_BURST: "An unusually high rate of submissions from one supplier — auditor review recommended.",
 };
 
 export function anomalyDetail(anomaly) {

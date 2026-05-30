@@ -67,3 +67,51 @@ def test_registry_accepts_nested_shape(tmp_path):
 def test_normalize_camelcase_keys():
     out = _normalize([{"issuerId": "X", "publicKey": "ab", "verified": True}])
     assert out["X"] == {"public_key": "ab", "verified": True}
+
+
+# ---- replay_key adapter seam (the 7th seam) --------------------------------
+def _att_for_replay(supplier_id="SUP-X", product_id="widget"):
+    from app.models import Attestation, Output  # noqa: PLC0415
+    return Attestation(
+        supplier_id=supplier_id, output=Output(product_id, 1, "pcs"),
+        inputs=tuple(), materials_cents=0, labour_cents=0,
+        work_country="CA", is_substantial_transformation=False,
+        timestamp="2026-05-01T08:00:00Z", signature="",
+    )
+
+
+def test_replay_key_default_is_serial():
+    assert spec.REPLAY_RULE == "serial"
+    assert adapters.replay_key(_att_for_replay()) == ("SUP-X", "widget")
+
+
+def test_replay_key_hash_only_disables_semantic_key(monkeypatch):
+    monkeypatch.setattr(spec, "REPLAY_RULE", "hash_only")
+    assert adapters.replay_key(_att_for_replay()) is None
+
+
+def test_replay_key_serial_with_lot_uses_annotation(monkeypatch):
+    from app.models import Node  # noqa: PLC0415
+    monkeypatch.setattr(spec, "REPLAY_RULE", "serial_with_lot")
+    att = _att_for_replay()
+    node_no_lot = Node(attestation=att, hash="h")
+    assert adapters.replay_key(att, node_no_lot) == ("SUP-X", "widget")
+    node_with_lot = Node(attestation=att, hash="h", annotations={"lot_id": "L42"})
+    assert adapters.replay_key(att, node_with_lot) == ("SUP-X", "widget", "L42")
+
+
+def test_replay_key_hash_only_lets_serial_repeat_pass(monkeypatch):
+    """Regression: with hash_only, the replay fixture should NOT fire REPLAY_DETECTED
+    (two distinct hashes for the same (issuer, product) become legitimate)."""
+    import json
+    from pathlib import Path
+    from app.chain import build_chain
+    from app.registry import load_registry
+    from app.verify import Verifier
+    from app.models import Reason
+    monkeypatch.setattr(spec, "REPLAY_RULE", "hash_only")
+    fx = json.loads((FIX / "replay.json").read_text(encoding="utf-8"))
+    atts = [adapters.attestation_from_dict(o) for o in fx["attestations"]]
+    chain = build_chain(atts, fx["root_hash"])
+    r = Verifier(load_registry()).verify(chain)
+    assert Reason.REPLAY_DETECTED not in {a.reason for a in r.anomalies}

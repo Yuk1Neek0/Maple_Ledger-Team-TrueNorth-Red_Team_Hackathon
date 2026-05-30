@@ -181,3 +181,35 @@ def find_last_st(chain) -> "object | None":
     unknown. Strategy selectable via spec.ST_STRATEGY (default 'flag'). SWAP on
     the day: confirm the rule, set the constant; the variants are pre-staged."""
     return _ST_STRATEGIES.get(spec.ST_STRATEGY, _st_by_flag)(chain)
+
+
+# ---- replay-detection key (the 7th seam, event-day swap) -------------------
+# Variant per spec.REPLAY_RULE. Returning None opts a node out of replay
+# detection entirely (no key recorded; cannot collide).
+def _replay_serial(att):
+    return (att.supplier_id, att.output.product_id)
+
+
+def _replay_serial_with_lot(att, node=None):
+    base = (att.supplier_id, att.output.product_id)
+    lot = (node.annotations.get("lot_id") if node is not None else None)
+    return base + (lot,) if lot else base
+
+
+def _replay_hash_only(att):
+    return None  # disables semantic-key replay; uniqueness is the hash itself
+
+
+def replay_key(att, node=None):
+    """Return the tuple Verifier uses to detect a replayed attestation, or None
+    to opt out. The default (`serial`) matches the historical behaviour. Swap on
+    event day if the spec says uniqueness lives on output serial / lot / batch.
+
+    Node is optional and is passed by Verifier so future variants can read
+    overlay fields populated by adapters (e.g., annotations['lot_id'])."""
+    rule = spec.REPLAY_RULE
+    if rule == "hash_only":
+        return _replay_hash_only(att)
+    if rule == "serial_with_lot":
+        return _replay_serial_with_lot(att, node)
+    return _replay_serial(att)

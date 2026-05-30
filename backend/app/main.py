@@ -9,22 +9,37 @@ Service name `verifier-backend`, port 8000 — must match the event-day spec.
 from __future__ import annotations
 
 import json
+import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import adapters, llm, verify
 from .registry import load_registry
+from .storage import Store, open_db
+
+
+# Default DB path: repo-relative for dev, /data for container (writable mount).
+def _default_db_path() -> str:
+    env = os.environ.get("ML_DB_PATH")
+    if env:
+        return env
+    container = Path("/data")
+    if container.exists() and os.access(container, os.W_OK):
+        return str(container / "ledger.db")
+    return str(Path(__file__).resolve().parents[2] / "data" / "ledger.db")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global REGISTRY
+    global REGISTRY, STORE
     try:
         REGISTRY = load_registry()
     except FileNotFoundError:
         REGISTRY = {}
+    STORE = open_db(_default_db_path())
     yield
 
 
@@ -38,15 +53,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory attestation store: { content_hash: wire_dict }. SQLite swap is a
-# drop-in later (DESIGN §12); in-memory is enough for the harness lifecycle.
-STORE: dict[str, dict] = {}
+# SQLite-backed attestation store + append-only transparency log (P3.1).
+# Replaces the previous in-memory dict. Tests can substitute via dependency
+# injection or by reassigning `STORE` directly before client calls.
+STORE: Store = None  # type: ignore[assignment]  # populated by lifespan
 REGISTRY: dict = {}
 
 
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+@app.get("/health/details")
+def health_details() -> dict:
+    """Extended health for demo-mode safety: tells the UI whether seed data is
+    loaded so it can warn 'LIVE — NO DATA SEEDED' instead of silently returning
+    NONE for every hash."""
+    count = STORE.count_attestations() if STORE is not None else 0
+    head = STORE.log_head() if STORE is not None else None
+    return {
+        "status": "ok",
+        "store_count": count,
+        "registry_count": len(REGISTRY),
+        "log_head": head,
+    }
 
 
 @app.post("/attestations")
@@ -56,14 +87,34 @@ def post_attestation(obj: dict) -> dict:
         raise HTTPException(status_code=400, detail=err)
     att = adapters.attestation_from_dict(obj)
     h = adapters.compute_hash(att)
-    STORE[h] = obj
-    return {"hash": h}
+    log = STORE.insert_attestation(h, obj)
+    return {
+        "hash": h,
+        "log_seq": log["seq"] if log else None,
+        "chain_hash": log["chain_hash"] if log else None,
+    }
 
 
 @app.get("/verify/{root_hash}")
 def get_verify(root_hash: str) -> dict:
     result = verify.verify_root(STORE, REGISTRY, root_hash)
     return verify.result_to_dict(result)
+
+
+@app.get("/log/head")
+def log_head() -> dict:
+    """Most recent transparency-log entry (or None when empty). The chain_hash
+    here commits to every prior log entry."""
+    return {"head": STORE.log_head() if STORE is not None else None}
+
+
+@app.get("/log/{attestation_hash}")
+def log_entry(attestation_hash: str) -> dict:
+    """Inclusion lookup: is this attestation hash in the transparency log?"""
+    entry = STORE.log_entry_for(attestation_hash) if STORE is not None else None
+    if entry is None:
+        raise HTTPException(status_code=404, detail={"included": False})
+    return {"included": True, "entry": entry}
 
 
 @app.get("/registry")

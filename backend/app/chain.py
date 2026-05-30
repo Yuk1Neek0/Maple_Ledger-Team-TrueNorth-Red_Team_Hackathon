@@ -31,9 +31,12 @@ class SupplyChain:
                     stack.append(ref.attestation_hash)
         return seen
 
-    def topo_walk(self) -> tuple[list[str], bool]:
+    def topo_walk(self) -> tuple[list[str], list[str]]:
         """Kahn's algorithm over the reachable subgraph (edges producer->consumer).
-        Returns (leaves-first order, has_cycle)."""
+        Returns (leaves-first order, cycle_members). cycle_members is empty when
+        the graph is acyclic; otherwise it is the set of reachable nodes that
+        never got their in-degree to zero — i.e. the nodes participating in (or
+        downstream of) the cycle. Tests treat any non-empty list as has_cycle."""
         nodes = self.reachable()
         indeg = {h: 0 for h in nodes}
         for h in nodes:
@@ -50,7 +53,9 @@ class SupplyChain:
                     indeg[c] -= 1
                     if indeg[c] == 0:
                         queue.append(c)
-        return order, len(order) != len(nodes)
+        # Anything still with indeg>0 is on or downstream of a cycle.
+        cycle_members = sorted(h for h, d in indeg.items() if d > 0)
+        return order, cycle_members
 
 
 def build_chain(attestations: list[Attestation], root_hash: str) -> SupplyChain:

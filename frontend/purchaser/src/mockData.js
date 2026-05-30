@@ -1,3 +1,20 @@
+// Demo hash chips (P3.4) — one-click verify against seeded fixtures.
+// Synced from `data/tools/gen_mock.py` — run `python data/tools/gen_mock.py`
+// then `python scripts/seed.py` against a live backend before demoing.
+//
+// Curated subset (out of 19 fixtures): the 8 that tell the strongest story
+// in the right order — pass, tamper, replay, structural, advisory.
+export const DEMO_HASHES = [
+  { label: "Happy path (MIC)", tone: "ok", hash: "13e72f89a1397084868ee6aaf006d47e2832b6f1c60b14c8279ff11207e77ef5" },
+  { label: "Product of Canada", tone: "ok", hash: "55af226c7ead88f56c7e76588d0090f98ce6c208c32653fef58636c58eb53b1a" },
+  { label: "Foreign assembly → NONE", tone: "fail", hash: "93c11364caed22eb5f949b6e3c07917b88563d293ac91c636b36c8538c50ae79" },
+  { label: "Tampered → SIG fail", tone: "fail", hash: "8d3b6b4811e6fd82126165f3d50f280a00aa9261393ae0ec2399c621cba0896f" },
+  { label: "Overdraw (mass-bal)", tone: "fail", hash: "b55e0f9aa40a9cad509399583ff4c964b8ebe901496eec2cbbecdb7ca135195b" },
+  { label: "Under 51%", tone: "fail", hash: "4fbe92bf7a0e8de6b968c74b970549ba0d9ce19707338e5fbfdbf476f89e39b3" },
+  { label: "Deep chain (20 nodes)", tone: "ok", hash: "ddb1ad0300d899ea3b53d969d2c8231e11de32c42c1d3544330484880fe0eb07" },
+  { label: "Anomaly (advisory)", tone: "advisory", hash: "5303e4aadd97aadb8115c2b052e753b17d2d06fec1ac0e64c8d3f2354259427e" },
+];
+
 // Mock fixtures used while the real verifier engine is being built in parallel.
 //
 // `mockVerificationResult` matches the EXACT /verify/{root_hash} response shape

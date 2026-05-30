@@ -28,11 +28,15 @@ export default function ProvenanceGraph({ graph }) {
     const elements = [
       ...graph.nodes.map((n) => ({
         data: {
+          // Cytoscape label gets a small "#seq" suffix when the node is anchored
+          // in the transparency log (P4) — the visible proof that every node in
+          // the chain made it into the ledger.
           id: n.id,
-          label: n.label || n.id,
+          label: n.log_seq != null ? `${n.label || n.id}\n#${n.log_seq}` : (n.label || n.id),
           color: nodeColor(n),
           status: n.status || "OK",
           country: n.country || "",
+          log_seq: n.log_seq ?? null,
         },
       })),
       ...graph.edges.map((e) => ({

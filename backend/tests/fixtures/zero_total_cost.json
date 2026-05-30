@@ -1,0 +1,65 @@
+{
+  "description": "all costs zero -> NONE (total==0)",
+  "root_hash": "5d21c94e7f07fd5a3561938476dc4892e63d6e6048627e4531773de5d2bf55fe",
+  "expected": {
+    "designation": "NONE",
+    "reason": "ZERO_TOTAL_COST"
+  },
+  "attestations": [
+    {
+      "supplier_id": "SUP-ALU",
+      "output": {
+        "product_id": "raw_aluminum",
+        "quantity": 1,
+        "unit": "kg"
+      },
+      "inputs": [],
+      "materials_cents": 0,
+      "labour_cents": 0,
+      "work_country": "CA",
+      "is_substantial_transformation": false,
+      "timestamp": "2026-05-01T08:00:00Z",
+      "signature": "f7TY2vNEbQdWcxKgBP6lY+9GMjD95Y/I23PdIPRDEQllh4tLbTTKzbYA88YDT+GPGEd5I0639JE4J/OLx6OzBQ=="
+    },
+    {
+      "supplier_id": "SUP-MOTOR",
+      "output": {
+        "product_id": "motor_housing",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "2844223cd641dfc8ef24354a0a8e930a8a430e559cf697de885a71e8559daa1e",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 0,
+      "labour_cents": 0,
+      "work_country": "CA",
+      "is_substantial_transformation": true,
+      "timestamp": "2026-05-02T08:00:00Z",
+      "signature": "/d9HsoxZCMOlDiHoQcF3BCbRzcH/1dAN5u0iOeqASJ5ZUxPSZVv+J4tFgZTLIP1cFtudZwXrIe/BVT0DgtDgCA=="
+    },
+    {
+      "supplier_id": "SUP-DRONE",
+      "output": {
+        "product_id": "drone_X1",
+        "quantity": 1,
+        "unit": "pcs"
+      },
+      "inputs": [
+        {
+          "attestation_hash": "fee6bfed6e6e18c98b31de18a4dc8f274515b5adb9d3b40e03f0765f2f9b689c",
+          "quantity_used": 1
+        }
+      ],
+      "materials_cents": 0,
+      "labour_cents": 0,
+      "work_country": "CA",
+      "is_substantial_transformation": true,
+      "timestamp": "2026-05-03T08:00:00Z",
+      "signature": "MdSBxzK6hb101m5cUSjoXiV4t0c3MhrdUrJD2c4miqEHvp2NGzXVdOD+RevgMG0H1NXBYsnGiOD7KDFNP/CuCg=="
+    }
+  ]
+}

@@ -27,17 +27,27 @@ class Verifier:
         self.registry = registry
 
     def verify(self, chain) -> VerificationResult:
-        order, has_cycle = chain.topo_walk()
+        order, cycle_members = chain.topo_walk()
         anomalies: list[Anomaly] = []
 
-        if has_cycle:
-            anomalies.append(Anomaly(Reason.CYCLE, chain.root_hash, "cycle detected in chain"))
+        if cycle_members:
+            # Detail enumerates every node that couldn't be topologically ordered
+            # — invaluable for debugging chains the spec ingested. The root-hash
+            # anomaly stays on the root so the existing UI keeps lighting it up.
+            preview = ", ".join(m[:12] for m in cycle_members[:6])
+            extra = f" (+{len(cycle_members) - 6} more)" if len(cycle_members) > 6 else ""
+            anomalies.append(Anomaly(
+                Reason.CYCLE, chain.root_hash,
+                f"cycle detected in chain; members: {preview}{extra}",
+            ))
+            for h in cycle_members:
+                chain.by_hash[h].annotations["cycle_member"] = True
             result = VerificationResult(Designation.NONE, 0.0, 0, 0, {}, anomalies)
             result.graph = chain_to_graph(chain)
             return result
 
         # per-node integrity + structural, in precedence order
-        seen_serial: dict[tuple[str, str], str] = {}
+        seen_serial: dict[tuple, str] = {}
         for h in order:
             node = chain.by_hash[h]
             att = node.attestation
@@ -55,12 +65,13 @@ class Verifier:
                 self._fail(node, Reason.SIGNATURE_INVALID, anomalies, "signature does not verify")
                 continue
 
-            key = (att.supplier_id, att.output.product_id)
-            if key in seen_serial:
-                self._fail(node, Reason.REPLAY_DETECTED, anomalies,
-                           f"duplicate output serial {key}")
-                continue
-            seen_serial[key] = h
+            key = adapters.replay_key(att, node)
+            if key is not None:
+                if key in seen_serial:
+                    self._fail(node, Reason.REPLAY_DETECTED, anomalies,
+                               f"duplicate output serial {key}")
+                    continue
+                seen_serial[key] = h
 
             missing = [ih for ih in node.input_hashes if ih not in chain.by_hash]
             if missing:
@@ -112,7 +123,7 @@ class Verifier:
         if root_invalid or mass_balance_hit:
             designation = Designation.NONE
 
-        # advisory anomalies (no effect on verdict). Lit up once anomaly.py merges.
+        # advisory anomalies (no effect on verdict)
         try:
             from . import anomaly  # noqa: PLC0415
             anomalies.extend(anomaly.score(chain.by_hash.values()))
@@ -121,6 +132,17 @@ class Verifier:
 
         pct = canadian / total if total else 0.0
         result = VerificationResult(designation, pct, total, canadian, by_country, anomalies)
+
+        # P5: deterministic rule-based advisories. Run AFTER result is built so
+        # rules can read final designation / cost_by_country. Advisory only —
+        # rules.evaluate guarantees Anomaly(advisory=True) for everything it
+        # appends, so this can never change `designation`.
+        try:
+            from . import rules  # noqa: PLC0415
+            result.anomalies.extend(rules.evaluate(chain, result))
+        except Exception:
+            pass
+
         result.graph = chain_to_graph(chain)
         return result
 
@@ -131,13 +153,20 @@ class Verifier:
         anomalies.append(Anomaly(reason, node.hash, detail))
 
 
-def verify_root(store: dict[str, dict], registry: dict, root_hash: str) -> VerificationResult:
-    # The store is a shared pool of every attestation ever submitted. Scope the
-    # chain to what is reachable from this root, else mass-balance / anomaly /
-    # cost would span unrelated products (e.g. a shared raw-material lot would
-    # look over-consumed across chains).
+def verify_root(store, registry: dict, root_hash: str) -> VerificationResult:
+    """Verify the product whose finished-good attestation has the given hash.
+
+    `store` is polymorphic: a `storage.Store` (SQLite, current backend default)
+    or a plain `dict[hash, wire_dict]` (legacy tests + scripts). Scoping by
+    reachable() from root prevents shared raw-material lots from looking
+    over-consumed across unrelated chains.
+    """
     atts = []
-    for v in store.values():
+    if hasattr(store, "iter_attestations"):
+        items = store.iter_attestations()        # storage.Store
+    else:
+        items = ((h, v) for h, v in store.items())  # legacy dict
+    for _h, v in items:
         try:
             atts.append(adapters.attestation_from_dict(v))
         except Exception:
@@ -146,7 +175,18 @@ def verify_root(store: dict[str, dict], registry: dict, root_hash: str) -> Verif
     reachable = full.reachable()
     scoped = [full.by_hash[h].attestation for h in reachable]
     chain = build_chain(scoped, root_hash)
-    return Verifier(registry).verify(chain)
+    result = Verifier(registry).verify(chain)
+    # If the store carries a transparency log, decorate the graph with log refs
+    # and attach the current log head to the result for top-level display.
+    if hasattr(store, "log_entry_for") and result.graph:
+        for node in result.graph.get("nodes", []):
+            entry = store.log_entry_for(node["id"])
+            if entry:
+                node["log_seq"] = entry["seq"]
+                node["chain_hash"] = entry["chain_hash"]
+    if hasattr(store, "log_head"):
+        result.log_head = store.log_head()  # type: ignore[attr-defined]
+    return result
 
 
 def anomaly_to_dict(a: Anomaly) -> dict:
@@ -187,7 +227,7 @@ def chain_to_graph(chain) -> dict:
 
 
 def result_to_dict(r: VerificationResult) -> dict:
-    return {
+    out = {
         "designation": r.designation.value,
         "canadian_pct": r.canadian_pct,
         "total_cost_cents": r.total_cost_cents,
@@ -196,3 +236,8 @@ def result_to_dict(r: VerificationResult) -> dict:
         "anomalies": [anomaly_to_dict(a) for a in r.anomalies],
         "graph": r.graph,
     }
+    # Optional log head, attached by verify_root when the store has a log.
+    head = getattr(r, "log_head", None)
+    if head is not None:
+        out["log_head"] = head
+    return out

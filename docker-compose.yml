@@ -6,6 +6,10 @@ services:
     container_name: verifier-backend
     ports:
       - "8000:8000"
+    volumes:
+      # Named volume so the SQLite store survives `docker compose down`.
+      # Use `docker compose down -v` to wipe (clean-room testing).
+      - ledger-data:/data
     environment:
       # Advisory AI (WS5) — optional. Put ANTHROPIC_API_KEY in a root .env file
       # (gitignored) to enable /draft and /ask; absent = features return 503.
@@ -15,6 +19,9 @@ services:
       - ML_SERIALIZATION=${ML_SERIALIZATION:-jcs}
       - ML_ST_STRATEGY=${ML_ST_STRATEGY:-flag}
       - ML_COST_FLOW=${ML_COST_FLOW:-fraction}
+      - ML_REPLAY_RULE=${ML_REPLAY_RULE:-serial}
+      # SQLite store location (P3.1). Container mounts the named volume at /data.
+      - ML_DB_PATH=${ML_DB_PATH:-/data/ledger.db}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 10s
@@ -36,3 +43,6 @@ services:
       - "5174:80"
     depends_on:
       - verifier-backend
+
+volumes:
+  ledger-data:

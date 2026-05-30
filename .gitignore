@@ -11,4 +11,7 @@ build/
 *.egg-info/
 .DS_Store
 data/dev/
+data/ledger.db
+data/ledger.db-shm
+data/ledger.db-wal
 ~$*
