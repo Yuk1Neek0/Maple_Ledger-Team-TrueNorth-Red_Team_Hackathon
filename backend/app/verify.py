@@ -100,12 +100,17 @@ class Verifier:
             if h in order and chain.by_hash[h].status == Status.OK:
                 self._fail(chain.by_hash[h], Reason.MASS_BALANCE, anomalies, detail)
 
-        # costs over valid nodes
-        valid = {h for h in order if chain.by_hash[h].status == Status.OK}
-        total, canadian, by_country = content.attribute_costs(chain, valid)
+        # COMPUTATION (Lane A · spec computation.md / 04 §9): the percentage and
+        # designation are a flat sum over EVERY attestation in the chain as
+        # submitted, REGARDLESS of validity. Anomalies drive chain_valid only —
+        # never the cost math. Use all nodes (not just reachable / not just OK):
+        # e.g. a "consumes nothing" leaf leaves its siblings unreachable, yet the
+        # spec still counts their cost.
+        allnodes = set(chain.by_hash)
+        total, canadian, by_country = content.attribute_costs(chain, allnodes)
 
         # per-node subtree % (display only; never feeds the verdict)
-        for h, p in content.subtree_percents(chain, valid).items():
+        for h, p in content.subtree_percents(chain, allnodes).items():
             chain.by_hash[h].subtree_percent = p
 
         # advisory criticality overlay (display only; never feeds the verdict)
@@ -116,12 +121,10 @@ class Verifier:
         last_st = adapters.find_last_st(chain)
         last_st_in_ca = last_st is not None and last_st.attestation.work_country == "CA"
         designation = content.designate(total, canadian, last_st_in_ca)
-
-        root = chain.by_hash.get(chain.root_hash)
-        root_invalid = root is None or root.status != Status.OK
-        mass_balance_hit = any(a.reason == Reason.MASS_BALANCE for a in anomalies)
-        if root_invalid or mass_balance_hit:
-            designation = Designation.NONE
+        # NOTE (Lane A): designation depends ONLY on total / substantial-
+        # transformation / percentage (spec Step 3). It is NOT forced to NONE by
+        # anomalies — an invalid chain still yields the designation its data
+        # implies (e.g. a corrupt-signature chain still scores its percentage).
 
         # advisory anomalies (no effect on verdict)
         try:
